@@ -1,15 +1,12 @@
 'use client'
-import React, { useState, useEffect, useMemo } from 'react'
-import { Spin, Empty, Input } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import React, { useState, useMemo } from 'react'
+import { Spin } from 'antd'
+import { EnvironmentOutlined } from '@ant-design/icons'
 import { fuzzyMatch } from '@/utils/fuzzy'
 import CityDetail from './CityDetail'
 
-const EMOJIS = ['🏙️','🌆','🌇','🌃','🏛️','🏢','🗼','🏡','🌉','🗺️']
-function cityEmoji(name) {
-  let h = 0
-  for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) & 0xffff
-  return EMOJIS[h % EMOJIS.length]
+function cityInitial(name) {
+  return String(name || '城').trim().slice(0, 1)
 }
 
 function CityCard({ city, count, onClick }) {
@@ -23,23 +20,24 @@ function CityCard({ city, count, onClick }) {
       onMouseLeave={() => setHov(false)}
       style={{
         background: hov ? 'var(--color-surface2)' : 'var(--color-surface)',
-        border: `1px solid ${hov ? 'rgba(108,99,255,0.4)' : 'var(--color-border)'}`,
-        borderRadius: 16, padding: '16px 14px', cursor: 'pointer',
+        border: `1px solid ${hov ? 'color-mix(in srgb,var(--color-primary) 44%,var(--color-border))' : 'var(--color-border)'}`,
+        borderRadius: 8, padding: 10, cursor: 'pointer',
         transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
-        transform: hov ? 'translateY(-3px) scale(1.01)' : 'none',
-        boxShadow: hov ? '0 8px 28px rgba(108,99,255,0.15),0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.25)',
-        display: 'flex', flexDirection: 'column', gap: 10,
+        transform: hov ? 'translateY(-2px)' : 'none',
+        boxShadow: hov ? 'var(--shadow-hover)' : 'none',
+        display: 'flex', alignItems: 'center', gap: 10,
+        minHeight: 58,
         outline: 'none', position: 'relative', overflow: 'hidden',
       }}
     >
-      {hov && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(108,99,255,0.08),rgba(0,210,255,0.04))', pointerEvents: 'none' }} />}
-      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, boxShadow: '0 4px 12px rgba(108,99,255,0.35)', position: 'relative', zIndex: 1, flexShrink: 0 }}>
-        {cityEmoji(city)}
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'color-mix(in srgb,var(--color-primary) 10%,var(--color-surface))', border: '1px solid color-mix(in srgb,var(--color-primary) 22%,var(--color-border))', color: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, position: 'relative', zIndex: 1, flexShrink: 0 }}>
+        {cityInitial(city)}
       </div>
       <div style={{ position: 'relative', zIndex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{city}</div>
+        <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>{city}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 18, padding: '0 6px', background: 'rgba(108,99,255,0.18)', color: 'var(--color-primary-light)', borderRadius: 9, fontSize: 11, fontWeight: 700 }}>{count}</span>
+          <EnvironmentOutlined style={{ color: 'var(--text-muted)', fontSize: 11 }} />
+          <span style={{ color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600 }}>{count}</span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>条地址</span>
         </div>
       </div>
@@ -84,7 +82,7 @@ export default function CityGrid({ stats, loading, searchQuery }) {
 
   return (
     <>
-      <div style={{ padding: '0 16px 80px' }}>
+      <div className="city-grid-wrap" style={{ padding: '0 16px 80px' }}>
         {provinces.map(prov => {
           const cities = (provinceMap[prov] || []).filter(c => !searchQuery || fuzzyMatch(c.city, searchQuery))
           if (cities.length === 0) return null
@@ -94,10 +92,10 @@ export default function CityGrid({ stats, loading, searchQuery }) {
             <div key={prov} style={{ marginBottom: 28 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px 12px' }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.8px' }}>{prov}</span>
-                <span style={{ fontSize: 11, color: 'rgba(108,99,255,0.5)', fontWeight: 600 }}>· {cities.length} 城市 · {totalInProv} 条</span>
+                <span style={{ fontSize: 11, color: 'var(--color-primary-light)', fontWeight: 600 }}>· {cities.length} 城市 · {totalInProv} 条</span>
                 <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(112px,1fr))', gap: 8 }}>
                 {cities.map(({ city, count }, i) => (
                   <div key={city} style={{ animation: `fadeUp 0.3s ease ${i * 35}ms both` }}>
                     <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>

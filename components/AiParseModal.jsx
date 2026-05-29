@@ -6,7 +6,7 @@ import {
 } from 'antd'
 import {
   RobotOutlined, CheckCircleOutlined, LoadingOutlined,
-  EyeOutlined, ImportOutlined, StopOutlined, WarningOutlined
+  EyeOutlined, ImportOutlined, StopOutlined, WarningOutlined, DatabaseOutlined
 } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
 
@@ -41,15 +41,23 @@ export default function AiParseModal({ open, onClose, onImported }) {
   const [parsedRows, setParsedRows] = useState([])
   const [error, setError] = useState('')
   const [importMode, setImportMode] = useState('append') // 'append' | 'replace'
+  const [currentBatch, setCurrentBatch] = useState({ index: 0, total: 0 })
   const abortRef = useRef(false)
+  const requestRef = useRef(null)
 
   useEffect(() => {
-    if (open) { setStep(0); setParsedRows([]); setError(''); setProgress({ done: 0, total: rawRows.length }) }
+    if (open) {
+      setStep(0)
+      setParsedRows([])
+      setError('')
+      setCurrentBatch({ index: 0, total: 0 })
+      setProgress({ done: 0, total: rawRows.length })
+    }
   }, [open, rawRows.length])
 
   const handleStart = async () => {
-    if (!settings.apiBaseUrl || !settings.apiKey) {
-      setError('请先在右上角「⚙️ 设置」填写 API 地址和密钥')
+    if (!settings.apiBaseUrl || (!settings.apiKey && !settings.hasApiKey)) {
+      setError('请先在右上角「设置」填写 API 地址和密钥')
       return
     }
     setError(''); setStep(1)
@@ -60,17 +68,33 @@ export default function AiParseModal({ open, onClose, onImported }) {
     let done = 0
 
     try {
+      const totalBatches = Math.ceil(rawRows.length / batchSize)
+      setCurrentBatch({ index: 0, total: totalBatches })
+
       for (let i = 0; i < rawRows.length; i += batchSize) {
         if (abortRef.current) throw new Error('已取消')
         const batch = rawRows.slice(i, i + batchSize)
+        const batchIndex = Math.floor(i / batchSize) + 1
+        const controller = new AbortController()
+
+        requestRef.current = controller
+        setCurrentBatch({ index: batchIndex, total: totalBatches })
 
         const resp = await fetch('/api/ai-parse', {
           method: 'POST',
+          signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rows: batch, settings }),
+          body: JSON.stringify({ rows: batch }),
         })
-        const data = await resp.json()
-        if (!data.ok) throw new Error(data.error)
+        requestRef.current = null
+
+        let data
+        try {
+          data = await resp.json()
+        } catch {
+          throw new Error(`AI 解析接口返回异常（HTTP ${resp.status}）`)
+        }
+        if (!resp.ok || !data.ok) throw new Error(data.error || `AI 解析接口错误（HTTP ${resp.status}）`)
 
         results.push(...data.rows)
         done += batch.length
@@ -80,8 +104,20 @@ export default function AiParseModal({ open, onClose, onImported }) {
       setParsedRows(results)
       setStep(2)
     } catch (e) {
-      if (e.message === '已取消') { setStep(0) } else { setError(e.message); setStep(0) }
+      requestRef.current = null
+      if (e.name === 'AbortError' || e.message === '已取消') {
+        setStep(0)
+        setError('已取消解析')
+      } else {
+        setError(e.message)
+        setStep(0)
+      }
     }
+  }
+
+  const handleCancelParsing = () => {
+    abortRef.current = true
+    requestRef.current?.abort()
   }
 
   const handleConfirm = async () => {
@@ -156,14 +192,14 @@ export default function AiParseModal({ open, onClose, onImported }) {
       {/* Step 1 */}
       {step === 1 && (
         <div style={{ textAlign: 'center', padding: '24px 0' }}>
-          <div style={{ fontSize: 52, marginBottom: 16, animation: 'pulse 2s infinite' }}>🤖</div>
-          <style>{`@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}`}</style>
-          <Title level={4} style={{ color: 'var(--text-primary)', marginBottom: 8 }}>AI 正在解析数据...</Title>
+          <DatabaseOutlined style={{ fontSize: 34, color: 'var(--color-primary-light)', marginBottom: 16 }} />
+          <Title level={4} style={{ color: 'var(--text-primary)', marginBottom: 8 }}>正在解析数据...</Title>
           <Text style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 20 }}>
             已完成 {progress.done} / {progress.total} 条
+            {currentBatch.total > 0 && ` · 第 ${currentBatch.index} / ${currentBatch.total} 批`}
           </Text>
           <Progress percent={pct} strokeColor={{ '0%': '#6c63ff', '100%': '#00d2ff' }} trailColor="var(--color-surface2)" style={{ marginBottom: 20 }} />
-          <Button danger icon={<StopOutlined />} onClick={() => { abortRef.current = true }} style={{ background: 'transparent' }}>取消解析</Button>
+          <Button danger icon={<StopOutlined />} onClick={handleCancelParsing} style={{ background: 'transparent' }}>取消解析</Button>
         </div>
       )}
 

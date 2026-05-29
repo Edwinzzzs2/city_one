@@ -1,8 +1,9 @@
 'use client'
-import React, { useState, useEffect } from 'react'
-import { Drawer, Input, List, Tag, Space, Typography, Empty, Spin } from 'antd'
-import { SearchOutlined, EnvironmentOutlined } from '@ant-design/icons'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Drawer, Input, List, Tag, Space, Typography, Empty, Spin, Button } from 'antd'
+import { SearchOutlined, CloseOutlined, EnvironmentOutlined } from '@ant-design/icons'
 import { fuzzyFilter, renderHighlight } from '@/utils/fuzzy'
+import CopyableAddress from './CopyableAddress'
 
 const { Text } = Typography
 
@@ -19,6 +20,25 @@ export default function CityDetail({ city, province, open, onClose }) {
   const [q, setQ] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
+  const pushedHistoryRef = useRef(false)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  const dismiss = useCallback(() => {
+    setQ('')
+    onCloseRef.current?.()
+  }, [])
+
+  const handleClose = useCallback(() => {
+    if (pushedHistoryRef.current && typeof window !== 'undefined') {
+      window.history.back()
+      return
+    }
+    dismiss()
+  }, [dismiss])
 
   useEffect(() => {
     if (open && city) {
@@ -32,23 +52,43 @@ export default function CityDetail({ city, province, open, onClose }) {
     }
   }, [open, city])
 
+  useEffect(() => {
+    if (!open || !city || typeof window === 'undefined') return
+
+    window.history.pushState(
+      { ...(window.history.state || {}), cityDetailOpen: true },
+      '',
+      window.location.href
+    )
+    pushedHistoryRef.current = true
+
+    const handlePopState = () => {
+      if (!pushedHistoryRef.current) return
+      pushedHistoryRef.current = false
+      dismiss()
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [open, city, dismiss])
+
   const filtered = fuzzyFilter(rows, q, ['address', 'district', 'industry', 'name', 'company'])
 
   return (
     <Drawer
       title={
         <Space>
-          <span style={{ fontSize: 20 }}>🏙️</span>
+          <EnvironmentOutlined style={{ color: 'var(--color-primary-light)' }} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)', lineHeight: 1.2 }}>{city}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>{province} · {rows.length} 条地址</div>
           </div>
         </Space>
       }
-      placement="right" onClose={() => { setQ(''); onClose() }} open={open}
+      placement="right" onClose={handleClose} open={open}
       width={Math.min(540, typeof window !== 'undefined' ? window.innerWidth : 540)}
       styles={{
-        body: { padding: 0, background: 'var(--color-bg2)' },
+        body: { padding: 0, paddingBottom: 'calc(72px + env(safe-area-inset-bottom))', background: 'var(--color-bg2)' },
         header: { background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-border)', padding: '16px 20px' },
         mask: { backdropFilter: 'blur(4px)' },
       }}
@@ -75,27 +115,31 @@ export default function CityDetail({ city, province, open, onClose }) {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface2)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.6, marginBottom: 8, width: '100%' }}>
-                <EnvironmentOutlined style={{ color: 'var(--color-primary-light)', marginRight: 6, fontSize: 12 }} />
+              <CopyableAddress address={item.address} className="copyable-address drawer-address">
                 {q ? renderHighlight(item.address, q, React) : item.address}
-              </div>
+              </CopyableAddress>
               {(item.name || item.company) && (
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  {item.name && <span style={{ marginRight: 8 }}>👤 {item.name}</span>}
-                  {item.company && <span>🏢 {item.company}</span>}
+                  {item.name && <span style={{ marginRight: 8 }}>{item.name}</span>}
+                  {item.company && <span>{item.company}</span>}
                 </div>
               )}
               <Space size={6} wrap>
-                {item.district && <MetaTag color="#a29bff" bg="rgba(108,99,255,0.1)" border="rgba(108,99,255,0.2)">📍 {item.district}</MetaTag>}
-                {item.industry && <MetaTag color="#5ee8ff" bg="rgba(0,210,255,0.07)" border="rgba(0,210,255,0.15)">🏢 {item.industry}</MetaTag>}
-                {item.source   && <MetaTag color="#ff9b9b" bg="rgba(255,107,107,0.07)" border="rgba(255,107,107,0.15)">👤 {item.source}</MetaTag>}
-                {item.status   && <MetaTag color="#5eeba8" bg="rgba(46,213,115,0.07)" border="rgba(46,213,115,0.15)">✅ {item.status}</MetaTag>}
-                {item.phone    && <MetaTag color="var(--text-muted)" bg="transparent" border="var(--color-border)">📞 {item.phone}</MetaTag>}
+                {item.district && <MetaTag color="var(--color-primary-light)" bg="color-mix(in srgb,var(--color-primary) 10%,transparent)" border="color-mix(in srgb,var(--color-primary) 22%,var(--color-border))">{item.district}</MetaTag>}
+                {item.industry && <MetaTag color="var(--color-accent)" bg="color-mix(in srgb,var(--color-accent) 10%,transparent)" border="color-mix(in srgb,var(--color-accent) 20%,var(--color-border))">{item.industry}</MetaTag>}
+                {item.source   && <MetaTag color="var(--text-secondary)" bg="var(--color-surface)" border="var(--color-border)">{item.source}</MetaTag>}
+                {item.status   && <MetaTag color="#059669" bg="color-mix(in srgb,#10b981 10%,transparent)" border="color-mix(in srgb,#10b981 22%,var(--color-border))">{item.status}</MetaTag>}
+                {item.phone    && <MetaTag color="var(--text-muted)" bg="transparent" border="var(--color-border)">{item.phone}</MetaTag>}
               </Space>
             </List.Item>
           )}
         />
       )}
+      <div className="drawer-bottom-action">
+        <Button block size="large" icon={<CloseOutlined />} onClick={handleClose}>
+          关闭
+        </Button>
+      </div>
     </Drawer>
   )
 }

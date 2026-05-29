@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getAISettings } from '@/lib/db'
+
+const AI_REQUEST_TIMEOUT_MS = 120_000
 
 const SYSTEM_PROMPT = `你是一个专业的数据清洗助手。我会给你从Excel表格中提取的原始数据行（JSON数组），请将每一行整理成标准格式。
 
@@ -57,53 +60,60 @@ async function readSSEContent(response) {
  * 调用 AI，自动处理 JSON 和 SSE 两种响应格式
  */
 async function callAI(url, apiKey, model, messages) {
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.1,
-      max_tokens: 4096,
-    }),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS)
 
-  if (!resp.ok) {
-    const errText = await resp.text()
-    throw new Error(`AI API 错误 (${resp.status}): ${errText.slice(0, 300)}`)
-  }
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.1,
+        max_tokens: 4096,
+        stream: false,
+      }),
+    })
 
-  const contentType = resp.headers.get('content-type') || ''
+    if (!resp.ok) {
+      const errText = await resp.text()
+      throw new Error(`AI API 错误 (${resp.status}): ${errText.slice(0, 300)}`)
+    }
 
-  if (contentType.includes('text/event-stream')) {
-    // 流式 SSE 响应
-    return await readSSEContent(resp)
-  } else {
-    // 普通 JSON 响应
-    const data = await resp.json()
-    return data.choices?.[0]?.message?.content || ''
+    const contentType = resp.headers.get('content-type') || ''
+
+    if (contentType.includes('text/event-stream')) {
+      // 流式 SSE 响应
+      return await readSSEContent(resp)
+    } else {
+      // 普通 JSON 响应
+      const data = await resp.json()
+      return data.choices?.[0]?.message?.content || ''
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error(`AI API 请求超时（${AI_REQUEST_TIMEOUT_MS / 1000} 秒），请检查 API 地址、模型名称或调小每批条数`)
+    }
+    throw e
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { rows, settings: clientSettings } = body
-
-    // 服务端环境变量作为兜底默认值
-    const settings = {
-      apiBaseUrl: clientSettings?.apiBaseUrl || process.env.AI_API_BASE_URL || '',
-      apiKey:     clientSettings?.apiKey     || process.env.AI_API_KEY     || '',
-      model:      clientSettings?.model      || process.env.AI_MODEL       || 'gpt-5.5',
-      batchSize:  clientSettings?.batchSize  || 40,
-    }
+    const { rows } = body
+    const settings = await getAISettings()
 
     if (!settings.apiBaseUrl || !settings.apiKey) {
       return NextResponse.json(
-        { ok: false, error: '未配置 API 地址或密钥，请在 App 设置中填写或在 .env.local 中配置' },
+        { ok: false, error: '未配置 API 地址或密钥，请在 AI 配置中填写' },
         { status: 400 }
       )
     }
@@ -112,6 +122,14 @@ export async function POST(request) {
     // 修复双斜杠
     const base = apiBaseUrl.replace(/\/+$/, '').replace(/\/\/v(\d)/, '/v$1')
     const url = `${base}/chat/completions`
+    const safeUrl = (() => {
+      try {
+        const u = new URL(url)
+        return `${u.origin}${u.pathname}`
+      } catch {
+        return url.replace(/\/\/([^/@]+@)?/, '//')
+      }
+    })()
 
     // 分批处理
     const batches = []
@@ -121,11 +139,16 @@ export async function POST(request) {
 
     const results = []
 
-    for (const batch of batches) {
+    console.log(`[POST /api/ai-parse] start rows=${rows.length} batches=${batches.length} batchSize=${batchSize} model=${model} url=${safeUrl}`)
+
+    for (let index = 0; index < batches.length; index++) {
+      const batch = batches[index]
+      console.log(`[POST /api/ai-parse] batch ${index + 1}/${batches.length} sending rows=${batch.length}`)
       const content = await callAI(url, apiKey, model, [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user',   content: JSON.stringify(batch) },
       ])
+      console.log(`[POST /api/ai-parse] batch ${index + 1}/${batches.length} received chars=${content.length}`)
 
       // 清理 Markdown 代码块包裹
       const cleaned = content
@@ -142,10 +165,12 @@ export async function POST(request) {
         }
       } catch {
         // JSON 解析失败，原样保留
+        console.warn(`[POST /api/ai-parse] batch ${index + 1}/${batches.length} returned non-JSON content, keeping original rows`)
         results.push(...batch)
       }
     }
 
+    console.log(`[POST /api/ai-parse] done rows=${results.length}`)
     return NextResponse.json({ ok: true, rows: results })
   } catch (e) {
     console.error('[POST /api/ai-parse]', e)

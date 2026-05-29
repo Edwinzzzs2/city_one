@@ -1,14 +1,15 @@
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { ConfigProvider, theme, Button, Input, Badge, Tooltip, Space, App, Tag } from 'antd'
-import { UploadOutlined, RobotOutlined, SettingOutlined, SearchOutlined, DeleteOutlined, DatabaseOutlined } from '@ant-design/icons'
+import { ConfigProvider, theme, Button, Input, Badge, Tooltip, Space, App } from 'antd'
+import { UploadOutlined, RobotOutlined, SettingOutlined, SearchOutlined, DatabaseOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
 import { parseExcelFile } from '@/utils/excelParser'
 import CityGrid from '@/components/CityGrid'
 import AiParseModal from '@/components/AiParseModal'
 import SettingsModal from '@/components/SettingsModal'
+import SearchResults from '@/components/SearchResults'
 
-function MainApp() {
+function MainApp({ themeMode, onToggleTheme }) {
   const { message } = App.useApp()
   const { rawRows, setRawRows, settings, initSettings } = useDataStore()
 
@@ -18,8 +19,10 @@ function MainApp() {
   const [importing, setImporting] = useState(false)
   const [stats, setStats] = useState([])
   const [statsLoading, setStatsLoading] = useState(true)
-  const [dbOk, setDbOk] = useState(null) // null=checking true=ok false=error
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
   const fileRef = useRef()
+  const searchTerm = searchQ.trim()
 
   // 初始化客户端 settings
   useEffect(() => { initSettings() }, [])
@@ -32,13 +35,10 @@ function MainApp() {
       const data = await res.json()
       if (data.ok) {
         setStats(data.rows || [])
-        setDbOk(true)
       } else {
-        setDbOk(false)
         message.error('数据库连接失败：' + data.error)
       }
     } catch (e) {
-      setDbOk(false)
       message.error('无法连接数据库：' + e.message)
     } finally {
       setStatsLoading(false)
@@ -46,6 +46,39 @@ function MainApp() {
   }, [])
 
   useEffect(() => { loadStats() }, [loadStats])
+
+  useEffect(() => {
+    if (!searchTerm) {
+      setSearchResults([])
+      setSearchLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const res = await fetch(`/api/addresses?q=${encodeURIComponent(searchTerm)}`, {
+          signal: controller.signal,
+        })
+        const data = await res.json()
+        if (!res.ok || !data.ok) throw new Error(data.error || '搜索失败')
+        setSearchResults(data.rows || [])
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          setSearchResults([])
+          message.error('搜索失败：' + e.message)
+        }
+      } finally {
+        if (!controller.signal.aborted) setSearchLoading(false)
+      }
+    }, 260)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [searchTerm, message])
 
   // 导入文件
   const handleFile = useCallback(async (file) => {
@@ -64,62 +97,50 @@ function MainApp() {
     }
   }, [setRawRows, message])
 
-  const handleClear = async () => {
-    if (!window.confirm('确定清空数据库中所有地址数据吗？')) return
-    try {
-      const res = await fetch('/api/addresses', { method: 'DELETE' })
-      const data = await res.json()
-      if (data.ok) { message.success('已清空数据库'); loadStats() }
-      else message.error(data.error)
-    } catch (e) { message.error(e.message) }
-  }
-
   const totalCities = new Set(stats.map(r => r.city).filter(Boolean)).size
   const totalRows = stats.reduce((s, r) => s + parseInt(r.count || 0), 0)
 
   return (
     <div style={{ minHeight: '100dvh', position: 'relative', zIndex: 1 }}>
       {/* ===== HEADER ===== */}
-      <header style={{ position: 'sticky', top: 0, zIndex: 200, background: 'rgba(11,13,20,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderBottom: '1px solid var(--color-border)', padding: '0 16px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12, height: 62 }}>
+      <header className="app-header">
+        <div className="app-header-inner">
 
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,#6c63ff,#00d2ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, boxShadow: '0 3px 10px rgba(108,99,255,0.4)' }}>
-              🏙️
+          <div className="brand-block">
+            <div className="brand-icon">
+              <DatabaseOutlined />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.1, background: 'linear-gradient(90deg,#8b85ff,#00d2ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <div className="brand-title">
                 城市地址
               </div>
               {totalRows > 0 && (
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div className="brand-meta">
                   <DatabaseOutlined style={{ fontSize: 9 }} />
                   {totalCities} 城市 · {totalRows} 条
-                  {dbOk === true && <span style={{ color: '#5eeba8' }}>● 已连接</span>}
-                  {dbOk === false && <span style={{ color: '#ff9b9b' }}>● 连接失败</span>}
                 </div>
               )}
             </div>
           </div>
 
           {/* Search */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="header-search">
             <Input
               prefix={<SearchOutlined style={{ color: 'var(--text-muted)' }} />}
-              placeholder="搜索城市..."
+              placeholder="搜索城市、地址、机构、电话..."
               value={searchQ} onChange={e => setSearchQ(e.target.value)}
               allowClear disabled={stats.length === 0} style={{ height: 36 }}
             />
           </div>
 
           {/* Actions */}
-          <Space size={6} style={{ flexShrink: 0 }}>
+          <Space size={6} className="header-actions">
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
 
             <Tooltip title="导入 Excel / CSV">
               <Button type="primary" icon={<UploadOutlined />} loading={importing} onClick={() => fileRef.current?.click()} style={{ height: 36 }}>
-                导入
+                <span className="action-label">导入</span>
               </Button>
             </Tooltip>
 
@@ -127,18 +148,20 @@ function MainApp() {
               <Tooltip title={`${rawRows.length} 条待 AI 解析`}>
                 <Badge count={rawRows.length} size="small">
                   <Button icon={<RobotOutlined />} onClick={() => setAiOpen(true)}
-                    style={{ height: 36, borderColor: 'rgba(108,99,255,0.5)', color: 'var(--color-primary-light)', background: 'rgba(108,99,255,0.1)' }}>
-                    AI 解析
+                    style={{ height: 36, borderColor: 'color-mix(in srgb,var(--color-primary) 42%,var(--color-border))', color: 'var(--color-primary-light)', background: 'color-mix(in srgb,var(--color-primary) 10%,var(--color-surface))' }}>
+                    <span className="action-label">AI 解析</span>
                   </Button>
                 </Badge>
               </Tooltip>
             )}
 
-            {totalRows > 0 && (
-              <Tooltip title="清空数据库">
-                <Button icon={<DeleteOutlined />} onClick={handleClear} danger style={{ height: 36, background: 'transparent', color: '#ff9b9b', borderColor: 'rgba(255,107,107,0.25)' }} />
-              </Tooltip>
-            )}
+            <Tooltip title={themeMode === 'dark' ? '切换浅色模式' : '切换深色模式'}>
+              <Button
+                icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+                onClick={onToggleTheme}
+                style={{ height: 36 }}
+              />
+            </Tooltip>
 
             <Tooltip title="AI 配置">
               <Button icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)} style={{ height: 36 }} />
@@ -149,7 +172,11 @@ function MainApp() {
 
       {/* ===== MAIN ===== */}
       <main style={{ maxWidth: 960, margin: '0 auto', padding: '24px 0' }}>
-        <CityGrid stats={stats} loading={statsLoading} searchQuery={searchQ.trim()} />
+        {searchTerm ? (
+          <SearchResults query={searchTerm} rows={searchResults} loading={searchLoading} />
+        ) : (
+          <CityGrid stats={stats} loading={statsLoading} searchQuery="" />
+        )}
       </main>
 
       <AiParseModal open={aiOpen} onClose={() => setAiOpen(false)} onImported={loadStats} />
@@ -159,27 +186,50 @@ function MainApp() {
 }
 
 export default function Page() {
+  const [themeMode, setThemeMode] = useState('light')
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('cityAddressTheme')
+    setThemeMode(saved || 'light')
+  }, [])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = themeMode
+    document.documentElement.style.colorScheme = themeMode
+    window.localStorage.setItem('cityAddressTheme', themeMode)
+  }, [themeMode])
+
+  const isDark = themeMode === 'dark'
+
   return (
     <ConfigProvider
       theme={{
-        algorithm: theme.darkAlgorithm,
+        algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#6c63ff',
-          colorBgBase: '#0b0d14',
-          colorBgContainer: '#161928',
-          colorBgElevated: '#1e2235',
-          colorBorder: 'rgba(255,255,255,0.07)',
-          borderRadius: 10,
+          colorPrimary: '#2563eb',
+          colorBgBase: isDark ? '#0f172a' : '#f7f8fb',
+          colorBgContainer: isDark ? '#182033' : '#ffffff',
+          colorBgElevated: isDark ? '#202a40' : '#ffffff',
+          colorBorder: isDark ? 'rgba(148,163,184,0.22)' : '#d9e0ea',
+          borderRadius: 8,
           fontFamily: "'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif",
-          colorText: '#f0f2ff',
-          colorTextSecondary: 'rgba(240,242,255,0.6)',
-          colorTextTertiary: 'rgba(240,242,255,0.35)',
+          colorText: isDark ? '#e5e7eb' : '#111827',
+          colorTextSecondary: isDark ? '#a7b0c0' : '#4b5563',
+          colorTextTertiary: isDark ? '#717b8f' : '#7b8794',
         },
-        components: { Button: { borderRadius: 50 }, Input: { borderRadius: 50 } }
+        components: {
+          Button: { borderRadius: 8 },
+          Input: { borderRadius: 8 },
+          Modal: { borderRadiusLG: 10 },
+          Drawer: { borderRadiusLG: 0 },
+        }
       }}
     >
       <App>
-        <MainApp />
+        <MainApp
+          themeMode={themeMode}
+          onToggleTheme={() => setThemeMode(mode => mode === 'dark' ? 'light' : 'dark')}
+        />
       </App>
     </ConfigProvider>
   )

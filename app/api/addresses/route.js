@@ -24,7 +24,11 @@ export async function GET(request) {
           province ILIKE $1 OR
           industry ILIKE $1 OR
           name     ILIKE $1 OR
-          company  ILIKE $1
+          company  ILIKE $1 OR
+          phone    ILIKE $1 OR
+          source   ILIKE $1 OR
+          status   ILIKE $1 OR
+          sheet_name ILIKE $1
         ORDER BY province, city, district
         LIMIT 500
       `

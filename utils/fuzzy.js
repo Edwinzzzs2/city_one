@@ -22,10 +22,11 @@ export function renderHighlight(text, query, React) {
     React.createElement('mark', {
       key: 'h',
       style: {
-        background: 'rgba(108,99,255,0.35)',
-        color: '#c4c0ff',
+        background: 'color-mix(in srgb,var(--color-primary) 18%,transparent)',
+        color: 'var(--color-primary-light)',
         borderRadius: 3,
         padding: '0 2px',
+        fontWeight: 700,
       }
     }, str.slice(idx, idx + query.length)),
     str.slice(idx + query.length),

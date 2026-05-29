@@ -1,0 +1,10 @@
+{
+  "name": "城市地址管理系统",
+  "short_name": "城市地址",
+  "description": "AI 驱动的城市地址导入与搜索系统",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0d14",
+  "theme_color": "#6c63ff",
+  "lang": "zh-CN"
+}

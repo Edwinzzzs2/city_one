@@ -1,32 +1,50 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Modal, Form, Input, Select, Slider, Button, Alert, Divider, Space } from 'antd'
 import { SettingOutlined, KeyOutlined, LinkOutlined } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
+import { App } from 'antd'
 const PRESET_MODELS = ['gpt-5.5','gpt-5.4','gpt-5.2-pro','gpt-5.2','gpt-5.4-mini','gpt-4o','gpt-4o-mini']
 
 
 export default function SettingsModal({ open, onClose }) {
   const { settings, updateSettings } = useDataStore()
+  const { message } = App.useApp()
   const [form] = Form.useForm()
   const [batchVal, setBatchVal] = useState(settings.batchSize || 40)
+  const [saving, setSaving] = useState(false)
 
-  const handleOk = () => {
-    form.validateFields().then(values => {
-      updateSettings({ ...values, batchSize: batchVal })
+  useEffect(() => {
+    if (!open) return
+    form.setFieldsValue(settings)
+    setBatchVal(settings.batchSize || 40)
+  }, [open, settings, form])
+
+  const handleOk = async () => {
+    try {
+      const values = await form.validateFields()
+      setSaving(true)
+      await updateSettings({ ...values, batchSize: batchVal })
+      message.success('AI 配置已保存')
       onClose()
-    })
+    } catch (e) {
+      if (e?.errorFields) return
+      message.error(e.message || '保存失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <Modal
       title={<Space><SettingOutlined style={{ color: 'var(--color-primary-light)' }} /><span style={{ color: 'var(--text-primary)' }}>AI 配置</span></Space>}
-      open={open} onCancel={onClose} onOk={handleOk} okText="保存" cancelText="取消" width={480}
+      open={open} onCancel={onClose} onOk={handleOk} okText="保存" cancelText="取消" width={420}
+      confirmLoading={saving}
+      className="settings-modal"
     >
       <Alert
-        style={{ marginBottom: 20, marginTop: 8 }}
-        message="API 密钥安全说明"
-        description="请求由 Next.js 服务端发出，浏览器不会直接接触 sub2api，无跨域问题。密钥保存在你的浏览器本地。"
+        style={{ marginBottom: 14, marginTop: 4 }}
+        message="配置保存到数据库，密钥仅服务端使用。"
         type="info" showIcon
       />
       <Form form={form} layout="vertical" initialValues={settings} requiredMark={false}>
@@ -35,25 +53,34 @@ export default function SettingsModal({ open, onClose }) {
           name="apiBaseUrl" rules={[{ required: true, message: '请填写 API 地址' }]}
           extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>例：https://your.sub2api.com/v1</span>}
         >
-          <Input prefix={<LinkOutlined />} placeholder="https://your.sub2api.com/v1" />
+          <Input prefix={<LinkOutlined />} placeholder="https://your.sub2api.com/v1" size="middle" />
         </Form.Item>
 
         <Form.Item
           label={<span style={{ color: 'var(--text-secondary)' }}>API 密钥</span>}
-          name="apiKey" rules={[{ required: true, message: '请填写密钥' }]}
+          name="apiKey"
+          rules={[
+            {
+              validator: (_, value) => {
+                if (value || settings.hasApiKey) return Promise.resolve()
+                return Promise.reject(new Error('请填写密钥'))
+              },
+            },
+          ]}
+          extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>显示为 ********；重新输入可覆盖。</span>}
         >
-          <Input.Password prefix={<KeyOutlined />} placeholder="sk-xxxxxxxxxxxxxxxx" />
+          <Input.Password prefix={<KeyOutlined />} placeholder="sk-xxxxxxxxxxxxxxxx" size="middle" />
         </Form.Item>
 
         <Form.Item label={<span style={{ color: 'var(--text-secondary)' }}>模型</span>} name="model">
           <Select showSearch options={PRESET_MODELS.map(m => ({ label: m, value: m }))} />
         </Form.Item>
 
-        <Divider style={{ borderColor: 'var(--color-border)', margin: '12px 0' }} />
+        <Divider style={{ borderColor: 'var(--color-border)', margin: '8px 0 12px' }} />
 
         <Form.Item
           label={<span style={{ color: 'var(--text-secondary)' }}>每批条数 ({batchVal} 条)</span>}
-          extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>建议 30-50，过大可能超出模型 Token 限制</span>}
+          extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>建议 30-50。</span>}
         >
           <Slider min={10} max={100} step={10} value={batchVal} onChange={setBatchVal} />
         </Form.Item>
