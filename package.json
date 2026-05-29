@@ -1,0 +1,21 @@
+{
+  "name": "city-address-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "antd": "^5.22.4",
+    "@ant-design/icons": "^5.5.2",
+    "@ant-design/nextjs-registry": "^1.0.1",
+    "pg": "^8.13.1",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.3"
+  }
+}
