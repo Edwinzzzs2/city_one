@@ -45,12 +45,21 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 html,body{
-  height:100%;
+  min-height:100%;
   font-family:var(--font);
-  background:var(--page-bg);
+  background:var(--color-bg2);
   color:var(--text-primary);
   -webkit-text-size-adjust:100%;
   overflow-x:hidden;
+}
+body{
+  min-height:100dvh;
+  background:var(--page-bg);
+}
+#__next,
+.ant-app{
+  min-height:100dvh;
+  background:var(--page-bg);
 }
 
 /* 全局背景纹理 */
@@ -332,17 +341,19 @@ body::after{
 .drawer-bottom-action{
   position:fixed;
   right:0;
-  left:auto;
   bottom:0;
   width:min(540px,100vw);
   z-index:20;
-  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
-  background:var(--header-bg);
+  padding:8px 16px calc(8px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--color-bg2) 92%,transparent);
   border-top:1px solid var(--color-border);
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
 }
-
+.drawer-bottom-action .ant-btn{
+  height:38px!important;
+  box-shadow:none!important;
+}
 @media (max-width: 720px){
   .app-header{
     padding:calc(env(safe-area-inset-top) + 14px) 12px 10px;
@@ -393,7 +404,7 @@ body::after{
     font-size:16px!important;
   }
   .ant-drawer-header{
-    padding:12px 16px!important;
+    padding:calc(env(safe-area-inset-top) + 18px) 16px 12px!important;
   }
   .ant-drawer-body .ant-list-item{
     padding-left:16px!important;
@@ -425,6 +436,37 @@ body::after{
   .city-grid-wrap{
     padding-left:10px!important;
     padding-right:10px!important;
+  }
+  .city-grid-wrap > div > div:last-child{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  .city-grid-wrap [role="button"]{
+    min-height:56px!important;
+    padding:9px!important;
+    gap:8px!important;
+  }
+  .city-grid-wrap [role="button"] > div:first-child{
+    width:30px!important;
+    height:30px!important;
+    font-size:13px!important;
+  }
+  .city-grid-wrap [role="button"] > div:nth-child(2){
+    min-width:0!important;
+    flex:1!important;
+  }
+  .city-grid-wrap [role="button"] > div:nth-child(2) > div:first-child{
+    font-size:14px!important;
+    line-height:1.2!important;
+  }
+  .city-grid-wrap [role="button"] > div:nth-child(2) > div:nth-child(2){
+    gap:4px!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+  }
+  .city-grid-wrap [role="button"] > div:nth-child(2) > div:nth-child(2) span{
+    font-size:11px!important;
+    white-space:nowrap!important;
   }
   .result-tags{
     padding-left:0;

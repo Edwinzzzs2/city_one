@@ -225,7 +225,7 @@ export default function Page() {
         }
       }}
     >
-      <App>
+      <App message={{ top: 88 }}>
         <MainApp
           themeMode={themeMode}
           onToggleTheme={() => setThemeMode(mode => mode === 'dark' ? 'light' : 'dark')}

@@ -5,6 +5,10 @@ export const metadata = {
   title: '城市地址管理系统',
   description: 'AI 驱动的城市地址导入与搜索系统',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/icon.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -16,7 +20,7 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#6c63ff',
+  themeColor: '#2563eb',
 }
 
 export default function RootLayout({ children }) {
