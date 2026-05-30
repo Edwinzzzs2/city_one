@@ -9,11 +9,15 @@ import AiParseModal from '@/components/AiParseModal'
 import SettingsModal from '@/components/SettingsModal'
 import SearchResults from '@/components/SearchResults'
 
+const PULL_REFRESH_TRIGGER = 68
+const PULL_REFRESH_MAX = 96
+
 function MainApp({ themeMode, onToggleTheme }) {
   const { message } = App.useApp()
   const { rawRows, setRawRows, settings, initSettings } = useDataStore()
 
   const [searchQ, setSearchQ] = useState('')
+  const [searchMode, setSearchMode] = useState('city')
   const [aiOpen, setAiOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -21,15 +25,18 @@ function MainApp({ themeMode, onToggleTheme }) {
   const [statsLoading, setStatsLoading] = useState(true)
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
+  const [pullRefresh, setPullRefresh] = useState({ distance: 0, refreshing: false })
   const fileRef = useRef()
+  const pullStartY = useRef(0)
+  const pullTracking = useRef(false)
   const searchTerm = searchQ.trim()
 
   // 初始化客户端 settings
   useEffect(() => { initSettings() }, [])
 
   // 加载城市统计
-  const loadStats = useCallback(async () => {
-    setStatsLoading(true)
+  const loadStats = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setStatsLoading(true)
     try {
       const res = await fetch('/api/addresses')
       const data = await res.json()
@@ -41,11 +48,31 @@ function MainApp({ themeMode, onToggleTheme }) {
     } catch (e) {
       message.error('无法连接数据库：' + e.message)
     } finally {
-      setStatsLoading(false)
+      if (!silent) setStatsLoading(false)
     }
   }, [])
 
   useEffect(() => { loadStats() }, [loadStats])
+
+  const fetchSearchResults = useCallback(async (term, mode, signal) => {
+    setSearchLoading(true)
+    try {
+      const searchParam = mode === 'city' ? 'city' : 'q'
+      const res = await fetch(`/api/addresses?${searchParam}=${encodeURIComponent(term)}`, {
+        signal,
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error || '搜索失败')
+      setSearchResults(data.rows || [])
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        setSearchResults([])
+        message.error('搜索失败：' + e.message)
+      }
+    } finally {
+      if (!signal?.aborted) setSearchLoading(false)
+    }
+  }, [message])
 
   useEffect(() => {
     if (!searchTerm) {
@@ -55,30 +82,15 @@ function MainApp({ themeMode, onToggleTheme }) {
     }
 
     const controller = new AbortController()
-    const timer = window.setTimeout(async () => {
-      setSearchLoading(true)
-      try {
-        const res = await fetch(`/api/addresses?q=${encodeURIComponent(searchTerm)}`, {
-          signal: controller.signal,
-        })
-        const data = await res.json()
-        if (!res.ok || !data.ok) throw new Error(data.error || '搜索失败')
-        setSearchResults(data.rows || [])
-      } catch (e) {
-        if (e.name !== 'AbortError') {
-          setSearchResults([])
-          message.error('搜索失败：' + e.message)
-        }
-      } finally {
-        if (!controller.signal.aborted) setSearchLoading(false)
-      }
+    const timer = window.setTimeout(() => {
+      fetchSearchResults(searchTerm, searchMode, controller.signal)
     }, 260)
 
     return () => {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [searchTerm, message])
+  }, [fetchSearchResults, searchTerm, searchMode])
 
   // 导入文件
   const handleFile = useCallback(async (file) => {
@@ -97,11 +109,71 @@ function MainApp({ themeMode, onToggleTheme }) {
     }
   }, [setRawRows, message])
 
+  const refreshPageData = useCallback(async () => {
+    setPullRefresh({ distance: 58, refreshing: true })
+    try {
+      await loadStats({ silent: true })
+      if (searchTerm) {
+        const controller = new AbortController()
+        await fetchSearchResults(searchTerm, searchMode, controller.signal)
+      }
+    } finally {
+      window.setTimeout(() => setPullRefresh({ distance: 0, refreshing: false }), 220)
+    }
+  }, [fetchSearchResults, loadStats, searchMode, searchTerm])
+
+  const handlePullStart = useCallback((event) => {
+    if (document.body.classList.contains('is-scroll-locked')) return
+    if (event.target?.closest?.('.ant-modal-root,.ant-drawer,.ant-select-dropdown')) return
+    if (window.scrollY > 0 || pullRefresh.refreshing || event.touches.length !== 1) return
+    pullStartY.current = event.touches[0].clientY
+    pullTracking.current = true
+  }, [pullRefresh.refreshing])
+
+  const handlePullMove = useCallback((event) => {
+    if (!pullTracking.current || pullRefresh.refreshing) return
+    const delta = event.touches[0].clientY - pullStartY.current
+    if (delta <= 0 || window.scrollY > 0) {
+      setPullRefresh(prev => prev.distance ? { ...prev, distance: 0 } : prev)
+      return
+    }
+
+    const distance = Math.min(PULL_REFRESH_MAX, Math.round(delta * 0.55))
+    if (distance > 8) event.preventDefault()
+    setPullRefresh(prev => prev.distance === distance ? prev : { ...prev, distance })
+  }, [pullRefresh.refreshing])
+
+  const handlePullEnd = useCallback(() => {
+    if (!pullTracking.current) return
+    pullTracking.current = false
+
+    if (pullRefresh.distance >= PULL_REFRESH_TRIGGER) {
+      refreshPageData()
+      return
+    }
+    setPullRefresh(prev => ({ ...prev, distance: 0 }))
+  }, [pullRefresh.distance, refreshPageData])
+
   const totalCities = new Set(stats.map(r => r.city).filter(Boolean)).size
   const totalRows = stats.reduce((s, r) => s + parseInt(r.count || 0), 0)
 
   return (
-    <div style={{ minHeight: '100dvh', position: 'relative', zIndex: 1 }}>
+    <div
+      className="app-shell"
+      onTouchStart={handlePullStart}
+      onTouchMove={handlePullMove}
+      onTouchEnd={handlePullEnd}
+      onTouchCancel={handlePullEnd}
+    >
+      {(pullRefresh.refreshing || pullRefresh.distance > 0) && (
+        <div
+          className={`pull-refresh${pullRefresh.refreshing ? ' is-refreshing' : ''}${pullRefresh.distance >= PULL_REFRESH_TRIGGER ? ' is-ready' : ''}`}
+          style={{ '--pull-distance': `${pullRefresh.refreshing ? 58 : pullRefresh.distance}px` }}
+        >
+          <span className="pull-refresh-spinner" />
+          <span>{pullRefresh.refreshing ? '刷新中' : pullRefresh.distance >= PULL_REFRESH_TRIGGER ? '松开刷新' : '下拉刷新'}</span>
+        </div>
+      )}
       {/* ===== HEADER ===== */}
       <header className="app-header">
         <div className="app-header-inner">
@@ -126,12 +198,23 @@ function MainApp({ themeMode, onToggleTheme }) {
 
           {/* Search */}
           <div className="header-search">
-            <Input
-              prefix={<SearchOutlined style={{ color: 'var(--text-muted)' }} />}
-              placeholder="搜索城市、地址、机构、电话..."
-              value={searchQ} onChange={e => setSearchQ(e.target.value)}
-              allowClear disabled={stats.length === 0} style={{ height: 36 }}
-            />
+            <div className="header-search-combo">
+              <Input
+                prefix={<SearchOutlined style={{ color: 'var(--text-muted)' }} />}
+                placeholder={searchMode === 'city' ? '搜索城市名称...' : '搜索地址、机构、电话...'}
+                value={searchQ} onChange={e => setSearchQ(e.target.value)}
+                allowClear disabled={stats.length === 0} style={{ height: 36 }}
+              />
+              <select
+                className="header-search-mode"
+                value={searchMode}
+                onChange={e => setSearchMode(e.target.value)}
+                aria-label="搜索类型"
+              >
+                <option value="city">城市</option>
+                <option value="keyword">关键字</option>
+              </select>
+            </div>
           </div>
 
           {/* Actions */}
@@ -171,7 +254,7 @@ function MainApp({ themeMode, onToggleTheme }) {
       </header>
 
       {/* ===== MAIN ===== */}
-      <main style={{ maxWidth: 960, margin: '0 auto', padding: '24px 0' }}>
+      <main className="app-main">
         {searchTerm ? (
           <SearchResults query={searchTerm} rows={searchResults} loading={searchLoading} />
         ) : (

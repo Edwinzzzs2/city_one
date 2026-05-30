@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Spin } from 'antd'
 import { EnvironmentOutlined } from '@ant-design/icons'
 import { fuzzyMatch } from '@/utils/fuzzy'
@@ -9,35 +9,26 @@ function cityInitial(name) {
   return String(name || '城').trim().slice(0, 1)
 }
 
+function provinceIndexLabel(name) {
+  return String(name || '').trim().slice(0, 1) || '#'
+}
+
 function CityCard({ city, count, onClick }) {
-  const [hov, setHov] = useState(false)
   return (
     <div
+      className="city-card"
       role="button" tabIndex={0}
       onClick={onClick}
       onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: hov ? 'var(--color-surface2)' : 'var(--color-surface)',
-        border: `1px solid ${hov ? 'color-mix(in srgb,var(--color-primary) 44%,var(--color-border))' : 'var(--color-border)'}`,
-        borderRadius: 8, padding: 10, cursor: 'pointer',
-        transition: 'all 0.22s cubic-bezier(0.4,0,0.2,1)',
-        transform: hov ? 'translateY(-2px)' : 'none',
-        boxShadow: hov ? 'var(--shadow-hover)' : 'none',
-        display: 'flex', alignItems: 'center', gap: 10,
-        minHeight: 58,
-        outline: 'none', position: 'relative', overflow: 'hidden',
-      }}
     >
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'color-mix(in srgb,var(--color-primary) 10%,var(--color-surface))', border: '1px solid color-mix(in srgb,var(--color-primary) 22%,var(--color-border))', color: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, position: 'relative', zIndex: 1, flexShrink: 0 }}>
+      <div className="city-card-initial">
         {cityInitial(city)}
       </div>
-      <div style={{ position: 'relative', zIndex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 3 }}>{city}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <EnvironmentOutlined style={{ color: 'var(--text-muted)', fontSize: 11 }} />
-          <span style={{ color: 'var(--text-secondary)', fontSize: 11, fontWeight: 600 }}>{count}</span>
+      <div className="city-card-body">
+        <div className="city-card-title">{city}</div>
+        <div className="city-card-meta">
+          <EnvironmentOutlined />
+          <span className="city-card-count">{count}</span>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>条地址</span>
         </div>
       </div>
@@ -47,6 +38,13 @@ function CityCard({ city, count, onClick }) {
 
 export default function CityGrid({ stats, loading, searchQuery }) {
   const [selected, setSelected] = useState(null)
+  const [activeProvince, setActiveProvince] = useState('')
+  const [showIndexBubble, setShowIndexBubble] = useState(false)
+  const provinceRefs = useRef({})
+  const indexRef = useRef(null)
+  const indexBubbleTimer = useRef(null)
+  const activeProvinceRef = useRef('')
+  const isIndexDragging = useRef(false)
 
   // Build province → cities map
   const provinceMap = useMemo(() => {
@@ -63,6 +61,64 @@ export default function CityGrid({ stats, loading, searchQuery }) {
     Object.keys(provinceMap).sort((a, b) => a === '其他' ? 1 : b === '其他' ? -1 : a.localeCompare(b, 'zh')),
     [provinceMap]
   )
+
+  const visibleProvinces = useMemo(() =>
+    provinces.filter(prov => {
+      const cities = (provinceMap[prov] || []).filter(c => !searchQuery || fuzzyMatch(c.city, searchQuery))
+      return cities.length > 0
+    }),
+    [provinceMap, provinces, searchQuery]
+  )
+
+  useEffect(() => {
+    return () => window.clearTimeout(indexBubbleTimer.current)
+  }, [])
+
+  const hideIndexBubbleSoon = () => {
+    window.clearTimeout(indexBubbleTimer.current)
+    indexBubbleTimer.current = window.setTimeout(() => setShowIndexBubble(false), 520)
+  }
+
+  const scrollToProvince = (province, behavior = 'smooth', autoHide = true) => {
+    const index = visibleProvinces.indexOf(province)
+    if (index >= 0) indexRef.current?.style.setProperty('--active-index', index)
+    activeProvinceRef.current = province
+    setActiveProvince(province)
+    setShowIndexBubble(true)
+    if (autoHide) hideIndexBubbleSoon()
+    provinceRefs.current[province]?.scrollIntoView({ behavior, block: 'start' })
+  }
+
+  const scrollByPointer = (event, behavior = 'auto') => {
+    const rect = indexRef.current?.getBoundingClientRect()
+    if (!rect || visibleProvinces.length === 0) return
+
+    const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 0.999)
+    const index = Math.floor(ratio * visibleProvinces.length)
+    const province = visibleProvinces[index]
+    if (province && province !== activeProvinceRef.current) scrollToProvince(province, behavior, false)
+  }
+
+  const handleIndexPointerDown = (event) => {
+    event.preventDefault()
+    isIndexDragging.current = true
+    window.clearTimeout(indexBubbleTimer.current)
+    if (activeProvinceRef.current) setShowIndexBubble(true)
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    scrollByPointer(event, 'auto')
+  }
+
+  const handleIndexPointerMove = (event) => {
+    if (!isIndexDragging.current) return
+    event.preventDefault()
+    scrollByPointer(event, 'auto')
+  }
+
+  const handleIndexPointerUp = (event) => {
+    isIndexDragging.current = false
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    hideIndexBubbleSoon()
+  }
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '80px 0' }}><Spin size="large" /></div>
@@ -82,18 +138,51 @@ export default function CityGrid({ stats, loading, searchQuery }) {
 
   return (
     <>
-      <div className="city-grid-wrap" style={{ padding: '0 16px 80px' }}>
-        {provinces.map(prov => {
+      <div className="city-grid-wrap">
+        {visibleProvinces.length > 1 && (
+          <nav
+            ref={indexRef}
+            className="province-index"
+            style={{ '--index-count': visibleProvinces.length }}
+            aria-label="省份索引"
+            onPointerDown={handleIndexPointerDown}
+            onPointerMove={handleIndexPointerMove}
+            onPointerUp={handleIndexPointerUp}
+            onPointerCancel={handleIndexPointerUp}
+          >
+            <span className="province-index-thumb" aria-hidden="true" />
+            {visibleProvinces.map(prov => (
+              <span
+                key={prov}
+                className="province-index-item"
+                title={prov}
+              >
+                {provinceIndexLabel(prov)}
+              </span>
+            ))}
+          </nav>
+        )}
+        {showIndexBubble && activeProvince && (
+          <div className="province-index-bubble" aria-hidden="true">
+            {activeProvince}
+          </div>
+        )}
+
+        {visibleProvinces.map(prov => {
           const cities = (provinceMap[prov] || []).filter(c => !searchQuery || fuzzyMatch(c.city, searchQuery))
-          if (cities.length === 0) return null
           const totalInProv = cities.reduce((s, c) => s + c.count, 0)
 
           return (
-            <div key={prov} style={{ marginBottom: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px 12px' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.8px' }}>{prov}</span>
+            <div
+              key={prov}
+              ref={node => { provinceRefs.current[prov] = node }}
+              className="province-section"
+              style={{ marginBottom: 28 }}
+            >
+              <div className="province-heading">
+                <span className="province-name">{prov}</span>
                 <span style={{ fontSize: 11, color: 'var(--color-primary-light)', fontWeight: 600 }}>· {cities.length} 城市 · {totalInProv} 条</span>
-                <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+                <div className="province-rule" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(112px,1fr))', gap: 8 }}>
                 {cities.map(({ city, count }, i) => (

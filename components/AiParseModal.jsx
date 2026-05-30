@@ -9,6 +9,7 @@ import {
   EyeOutlined, ImportOutlined, StopOutlined, WarningOutlined, DatabaseOutlined
 } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
+import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
 
 const { Text, Title } = Typography
 
@@ -44,6 +45,7 @@ export default function AiParseModal({ open, onClose, onImported }) {
   const [currentBatch, setCurrentBatch] = useState({ index: 0, total: 0 })
   const abortRef = useRef(false)
   const requestRef = useRef(null)
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (open) {
@@ -149,6 +151,7 @@ export default function AiParseModal({ open, onClose, onImported }) {
       closable={step !== 1} maskClosable={step !== 1}
       footer={null}
       width={step === 2 ? 920 : 520}
+      wrapClassName="app-modal-wrap"
     >
       <Steps
         current={step}

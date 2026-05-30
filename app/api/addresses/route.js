@@ -35,8 +35,8 @@ export async function GET(request) {
       params = [`%${q}%`]
     } else if (city) {
       // 查某个城市的所有地址
-      sql = `SELECT * FROM city_addresses WHERE city = $1 ORDER BY district, address`
-      params = [city]
+      sql = `SELECT * FROM city_addresses WHERE city ILIKE $1 ORDER BY district, address LIMIT 500`
+      params = [`%${city}%`]
     } else {
       // 首页：返回省市统计
       sql = `

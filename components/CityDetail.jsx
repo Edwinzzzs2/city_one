@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Drawer, Input, List, Tag, Space, Typography, Empty, Spin, Button } from 'antd'
 import { SearchOutlined, EnvironmentOutlined, CloseOutlined } from '@ant-design/icons'
 import { fuzzyFilter, renderHighlight } from '@/utils/fuzzy'
+import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
 import CopyableAddress from './CopyableAddress'
 
 const { Text } = Typography
@@ -22,6 +23,7 @@ export default function CityDetail({ city, province, open, onClose }) {
   const [loading, setLoading] = useState(false)
   const onCloseRef = useRef(onClose)
   const touchStartRef = useRef(null)
+  useBodyScrollLock(open)
 
   useEffect(() => {
     onCloseRef.current = onClose
@@ -82,9 +84,10 @@ export default function CityDetail({ city, province, open, onClose }) {
         </Space>
       }
       placement="right" onClose={handleClose} open={open}
+      rootClassName="city-detail-drawer"
       width={Math.min(540, typeof window !== 'undefined' ? window.innerWidth : 540)}
       styles={{
-        body: { padding: 0, paddingBottom: 'calc(62px + env(safe-area-inset-bottom))', background: 'var(--color-bg2)' },
+        body: { padding: 0, paddingBottom: 'calc(62px + env(safe-area-inset-bottom))', background: 'var(--color-bg2)', overscrollBehavior: 'contain' },
         header: { background: 'var(--color-bg2)', borderBottom: '1px solid var(--color-border)', padding: 'calc(env(safe-area-inset-top) + 16px) 20px 16px' },
         mask: { backdropFilter: 'blur(4px)' },
       }}

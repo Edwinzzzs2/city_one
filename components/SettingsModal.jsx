@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { Modal, Form, Input, Select, Slider, Button, Alert, Divider, Space } from 'antd'
 import { SettingOutlined, KeyOutlined, LinkOutlined } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
+import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
 import { App } from 'antd'
 const PRESET_MODELS = ['gpt-5.5','gpt-5.4','gpt-5.2-pro','gpt-5.2','gpt-5.4-mini','gpt-4o','gpt-4o-mini']
 
@@ -13,6 +14,7 @@ export default function SettingsModal({ open, onClose }) {
   const [form] = Form.useForm()
   const [batchVal, setBatchVal] = useState(settings.batchSize || 40)
   const [saving, setSaving] = useState(false)
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (!open) return
@@ -41,6 +43,7 @@ export default function SettingsModal({ open, onClose }) {
       open={open} onCancel={onClose} onOk={handleOk} okText="保存" cancelText="取消" width={420}
       confirmLoading={saving}
       className="settings-modal"
+      wrapClassName="app-modal-wrap"
     >
       <Alert
         style={{ marginBottom: 14, marginTop: 4 }}
