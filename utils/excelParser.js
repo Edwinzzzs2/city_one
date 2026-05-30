@@ -68,8 +68,15 @@ function isTemplateRow(row) {
   const joined = cells.join(' ')
   if (isTemplateText(joined)) return true
 
-  const mapped = mapHeaders(cells)
-  return headerScore(mapped) >= 2 && ('city' in mapped || 'address' in mapped)
+  const headerLikeCount = cells.reduce((count, cell) => {
+    const norm = cell.replace(/[（(].*?[）)]/g, '').trim().toLowerCase()
+    const isHeader = Object.values(COL_ALIASES).some(aliases =>
+      aliases.some(alias => norm === String(alias).toLowerCase())
+    )
+    return count + (isHeader ? 1 : 0)
+  }, 0)
+
+  return headerLikeCount >= 2
 }
 
 export async function parseExcelFile(file) {
