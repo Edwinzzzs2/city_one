@@ -293,10 +293,11 @@ body.is-scroll-locked .app-shell{
 }
 .brand-block{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:8px;
   flex-shrink:0;
   min-width:0;
+  transform:translateY(-1px);
 }
 .brand-icon{
   width:34px;
@@ -315,14 +316,15 @@ body.is-scroll-locked .app-shell{
 .brand-title{
   font-weight:700;
   font-size:15px;
-  line-height:1.1;
+  line-height:16px;
   color:var(--text-primary);
   white-space:nowrap;
 }
 .brand-meta{
   font-size:10px;
   color:var(--text-muted);
-  line-height:1;
+  line-height:11px;
+  margin-top:4px;
   display:flex;
   align-items:center;
   gap:4px;

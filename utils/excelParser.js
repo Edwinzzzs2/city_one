@@ -26,17 +26,50 @@ function mapHeaders(headers) {
   return map
 }
 
+function headerScore(colMap) {
+  return Object.keys(colMap).length
+}
+
 function findHeaderRow(sheetData) {
+  let bestIndex = 0
+  let bestScore = 0
   // 找包含已知列名的行（比"3个非空"更精确）
-  for (let i = 0; i < Math.min(sheetData.length, 30); i++) {
+  for (let i = 0; i < Math.min(sheetData.length, 40); i++) {
     const row = sheetData[i]
     if (!row) continue
     const headers = row.map(c => String(c || '').trim())
     const testMap = mapHeaders(headers)
+    const score = headerScore(testMap)
     // 至少能识别出 city 或 address 才算有效表头
-    if ('city' in testMap || 'address' in testMap) return i
+    if (score >= 2 && ('city' in testMap || 'address' in testMap) && score >= bestScore) {
+      bestIndex = i
+      bestScore = score
+    }
   }
-  return 0
+  return bestIndex
+}
+
+function isTemplateText(text) {
+  return [
+    '提示',
+    '导入模板示例',
+    '请勿修改',
+    '请从下面表格开始填写',
+    '从已有数据中选择',
+    '覆盖导入时必填',
+    '切勿改动表头',
+    '开始填写要导入的信息',
+  ].some(keyword => text.includes(keyword))
+}
+
+function isTemplateRow(row) {
+  const cells = row.map(c => String(c || '').trim()).filter(Boolean)
+  if (cells.length === 0) return true
+  const joined = cells.join(' ')
+  if (isTemplateText(joined)) return true
+
+  const mapped = mapHeaders(cells)
+  return headerScore(mapped) >= 2 && ('city' in mapped || 'address' in mapped)
 }
 
 export async function parseExcelFile(file) {
@@ -64,6 +97,7 @@ export async function parseExcelFile(file) {
     for (let i = headerIdx + 1; i < sheetData.length; i++) {
       const row = sheetData[i]
       if (!row || !row.some(c => c)) continue
+      if (isTemplateRow(row)) continue
       const address = get(row, 'address')
       const city = get(row, 'city')
       if (!address && !city) continue
