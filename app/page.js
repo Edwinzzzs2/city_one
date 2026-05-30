@@ -27,6 +27,7 @@ function MainApp({ themeMode, onToggleTheme }) {
   const [searchLoading, setSearchLoading] = useState(false)
   const [pullRefresh, setPullRefresh] = useState({ distance: 0, refreshing: false })
   const fileRef = useRef()
+  const shellRef = useRef(null)
   const pullStartY = useRef(0)
   const pullTracking = useRef(false)
   const searchTerm = searchQ.trim()
@@ -125,7 +126,8 @@ function MainApp({ themeMode, onToggleTheme }) {
   const handlePullStart = useCallback((event) => {
     if (document.body.classList.contains('is-scroll-locked')) return
     if (event.target?.closest?.('.ant-modal-root,.ant-drawer,.ant-select-dropdown')) return
-    if (window.scrollY > 0 || pullRefresh.refreshing || event.touches.length !== 1) return
+    const scrollTop = shellRef.current?.scrollTop || 0
+    if (scrollTop > 0 || pullRefresh.refreshing || event.touches.length !== 1) return
     pullStartY.current = event.touches[0].clientY
     pullTracking.current = true
   }, [pullRefresh.refreshing])
@@ -133,7 +135,8 @@ function MainApp({ themeMode, onToggleTheme }) {
   const handlePullMove = useCallback((event) => {
     if (!pullTracking.current || pullRefresh.refreshing) return
     const delta = event.touches[0].clientY - pullStartY.current
-    if (delta <= 0 || window.scrollY > 0) {
+    const scrollTop = shellRef.current?.scrollTop || 0
+    if (delta <= 0 || scrollTop > 0) {
       setPullRefresh(prev => prev.distance ? { ...prev, distance: 0 } : prev)
       return
     }
@@ -159,6 +162,7 @@ function MainApp({ themeMode, onToggleTheme }) {
 
   return (
     <div
+      ref={shellRef}
       className="app-shell"
       onTouchStart={handlePullStart}
       onTouchMove={handlePullMove}

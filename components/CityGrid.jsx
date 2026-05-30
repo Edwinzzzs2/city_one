@@ -184,7 +184,7 @@ export default function CityGrid({ stats, loading, searchQuery }) {
                 <span style={{ fontSize: 11, color: 'var(--color-primary-light)', fontWeight: 600 }}>· {cities.length} 城市 · {totalInProv} 条</span>
                 <div className="province-rule" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(112px,1fr))', gap: 8 }}>
+              <div className="city-card-grid">
                 {cities.map(({ city, count }, i) => (
                   <div key={city} style={{ animation: `fadeUp 0.3s ease ${i * 35}ms both` }}>
                     <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>
