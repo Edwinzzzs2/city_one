@@ -1,7 +1,7 @@
 'use client'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert, App, Button, Checkbox, Empty, Input, List, Space, Spin, Tag, Tooltip, Typography,
+  Alert, App, Button, Checkbox, Empty, Input, List, Select, Space, Spin, Tag, Tooltip, Typography,
 } from 'antd'
 import {
   AimOutlined, CloseOutlined, CompassOutlined, EnvironmentOutlined,
@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons'
 
 const { Text } = Typography
-const PROTECTION_RADIUS = 1000
+const PROTECTION_RADIUS_OPTIONS = [1, 2, 3, 4, 5]
 const DEFAULT_CENTER = [116.397428, 39.90923]
 const GEOCODE_BATCH_SIZE = 10
 const GEOCODE_DELAY_MS = 450
@@ -281,6 +281,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const [mapReady, setMapReady] = useState(false)
   const [listMode, setListMode] = useState('located')
   const [listFilterText, setListFilterText] = useState('')
+  const [protectionRadiusKm, setProtectionRadiusKm] = useState(3)
   const [showProtection, setShowProtection] = useState(true)
   const [selectedPoint, setSelectedPoint] = useState(null)
   const [manualPoint, setManualPoint] = useState(null)
@@ -295,6 +296,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
   const amapKey = process.env.NEXT_PUBLIC_AMAP_JS_KEY || ''
   const amapSecurityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_CODE || ''
+  const protectionRadiusMeters = protectionRadiusKm * 1000
   const activeCheckPoint = manualPoint || newPoint
   const isManualDraft = Boolean(manualPoint && selectedPoint)
   const filteredListRows = useMemo(() => {
@@ -437,7 +439,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const nearest = useMemo(() => (
     findNearest(activeCheckPoint, nearestCandidates, amapRef.current)
   ), [activeCheckPoint, nearestCandidates])
-  const isConflict = nearest?.distance <= PROTECTION_RADIUS
+  const isConflict = nearest?.distance <= protectionRadiusMeters
 
   useEffect(() => {
     const map = mapRef.current
@@ -486,7 +488,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       if (showProtection && points.length <= 500) {
         overlays.push(new AMap.Circle({
           center: [point.lng, point.lat],
-          radius: PROTECTION_RADIUS,
+          radius: protectionRadiusMeters,
           strokeColor: selectedPoint?.id === point.id ? '#f59e0b' : isManualLocation(point) ? '#7c3aed' : '#2563eb',
           strokeOpacity: selectedPoint?.id === point.id ? 0.48 : 0.18,
           strokeWeight: selectedPoint?.id === point.id ? 2 : 1,
@@ -504,7 +506,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (!selectedPoint && markers.length > 0) {
       map.setFitView(markers, false, [58, 40, 40, 40])
     }
-  }, [bindMarkerInfo, clearOverlays, mapReady, points, selectPoint, selectedPoint, showProtection])
+  }, [bindMarkerInfo, clearOverlays, mapReady, points, protectionRadiusMeters, selectPoint, selectedPoint, showProtection])
 
   useEffect(() => {
     const map = mapRef.current
@@ -570,7 +572,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       }))
       overlays.push(new AMap.Circle({
         center: [nearest.point.lng, nearest.point.lat],
-        radius: PROTECTION_RADIUS,
+        radius: protectionRadiusMeters,
         strokeColor: isConflict ? '#dc2626' : '#16a34a',
         strokeOpacity: 0.78,
         strokeWeight: 2,
@@ -609,7 +611,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     return () => {
       if (fitFrame) window.cancelAnimationFrame(fitFrame)
     }
-  }, [activeCheckPoint, bindMarkerInfo, clearOverlays, isConflict, isManualDraft, mapReady, nearest, selectedPoint])
+  }, [activeCheckPoint, bindMarkerInfo, clearOverlays, isConflict, isManualDraft, mapReady, nearest, protectionRadiusMeters, selectedPoint])
 
   const saveLocation = useCallback(async (row, point, options = {}) => {
     if (!row?.id || !point) return null
@@ -884,7 +886,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
           <div className="map-list-head">
             <span>{listMode === 'missing' ? '待补坐标' : listMode === 'manual' ? '手动打点' : '已落点'}</span>
             <Checkbox checked={showProtection} onChange={event => setShowProtection(event.target.checked)}>
-              1公里圈
+              {protectionRadiusKm}公里圈
             </Checkbox>
           </div>
           <Input
@@ -990,7 +992,17 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         <Tooltip title={selectedPoint ? '当前会为选中门店定点' : '点击地图可放置新点'}>
           <div className="map-radius-badge">
             <AimOutlined />
-            <span>保护半径 1 公里</span>
+            <span>保护半径</span>
+            <Select
+              size="small"
+              value={protectionRadiusKm}
+              onChange={setProtectionRadiusKm}
+              popupMatchSelectWidth={false}
+              options={PROTECTION_RADIUS_OPTIONS.map(value => ({
+                value,
+                label: `${value} 公里`,
+              }))}
+            />
           </div>
         </Tooltip>
         {selectedPoint && (
