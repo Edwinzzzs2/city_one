@@ -1,16 +1,21 @@
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { ConfigProvider, theme, Button, Input, Badge, Tooltip, Space, App } from 'antd'
-import { UploadOutlined, RobotOutlined, SettingOutlined, SearchOutlined, DatabaseOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import { ConfigProvider, theme, Button, Input, Badge, Tooltip, Space, App, Segmented } from 'antd'
+import {
+  UploadOutlined, RobotOutlined, SettingOutlined, SearchOutlined, DatabaseOutlined,
+  MoonOutlined, SunOutlined, UnorderedListOutlined, EnvironmentOutlined,
+} from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
 import { parseExcelFile } from '@/utils/excelParser'
 import CityGrid from '@/components/CityGrid'
 import AiParseModal from '@/components/AiParseModal'
 import SettingsModal from '@/components/SettingsModal'
 import SearchResults from '@/components/SearchResults'
+import MapView from '@/components/MapView'
 
 const PULL_REFRESH_TRIGGER = 68
 const PULL_REFRESH_MAX = 96
+const PULL_REFRESH_IGNORED_SELECTOR = '.ant-modal-root,.ant-drawer,.ant-select-dropdown,.map-stage,.map-search-panel,.amap-container'
 
 function MainApp({ themeMode, onToggleTheme }) {
   const { message } = App.useApp()
@@ -18,6 +23,7 @@ function MainApp({ themeMode, onToggleTheme }) {
 
   const [searchQ, setSearchQ] = useState('')
   const [searchMode, setSearchMode] = useState('city')
+  const [viewMode, setViewMode] = useState('list')
   const [aiOpen, setAiOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -125,7 +131,7 @@ function MainApp({ themeMode, onToggleTheme }) {
 
   const handlePullStart = useCallback((event) => {
     if (document.body.classList.contains('is-scroll-locked')) return
-    if (event.target?.closest?.('.ant-modal-root,.ant-drawer,.ant-select-dropdown')) return
+    if (event.target?.closest?.(PULL_REFRESH_IGNORED_SELECTOR)) return
     const scrollTop = shellRef.current?.scrollTop || 0
     if (scrollTop > 0 || pullRefresh.refreshing || event.touches.length !== 1) return
     pullStartY.current = event.touches[0].clientY
@@ -163,7 +169,7 @@ function MainApp({ themeMode, onToggleTheme }) {
   return (
     <div
       ref={shellRef}
-      className="app-shell"
+      className={`app-shell app-shell--${viewMode}`}
       onTouchStart={handlePullStart}
       onTouchMove={handlePullMove}
       onTouchEnd={handlePullEnd}
@@ -223,6 +229,17 @@ function MainApp({ themeMode, onToggleTheme }) {
 
           {/* Actions */}
           <Space size={6} className="header-actions">
+            <Segmented
+              className="view-switch"
+              size="small"
+              value={viewMode}
+              onChange={setViewMode}
+              options={[
+                { value: 'list', icon: <UnorderedListOutlined />, label: <span className="view-switch-label">列表</span> },
+                { value: 'map', icon: <EnvironmentOutlined />, label: <span className="view-switch-label">地图</span> },
+              ]}
+            />
+
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
 
             <Tooltip title="导入 Excel / CSV">
@@ -259,7 +276,9 @@ function MainApp({ themeMode, onToggleTheme }) {
 
       {/* ===== MAIN ===== */}
       <main className="app-main">
-        {searchTerm ? (
+        {viewMode === 'map' ? (
+          <MapView searchQuery={searchTerm} searchMode={searchMode} themeMode={themeMode} />
+        ) : searchTerm ? (
           <SearchResults query={searchTerm} rows={searchResults} loading={searchLoading} />
         ) : (
           <CityGrid stats={stats} loading={statsLoading} searchQuery="" />

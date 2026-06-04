@@ -11,6 +11,8 @@ const COL_ALIASES = {
   name:     ['客户名称', '姓名', '名称', '校区名称', 'name'],
   company:  ['公司名称', '公司', '机构名称', 'company'],
   phone:    ['电话', '手机', '联系电话', 'phone', 'tel'],
+  lng:      ['经度', 'longitude', 'lng', 'lon'],
+  lat:      ['纬度', 'latitude', 'lat'],
 }
 
 function mapHeaders(headers) {
@@ -33,14 +35,12 @@ function headerScore(colMap) {
 function findHeaderRow(sheetData) {
   let bestIndex = 0
   let bestScore = 0
-  // 找包含已知列名的行（比"3个非空"更精确）
   for (let i = 0; i < Math.min(sheetData.length, 40); i++) {
     const row = sheetData[i]
     if (!row) continue
     const headers = row.map(c => String(c || '').trim())
     const testMap = mapHeaders(headers)
     const score = headerScore(testMap)
-    // 至少能识别出 city 或 address 才算有效表头
     if (score >= 2 && ('city' in testMap || 'address' in testMap) && score >= bestScore) {
       bestIndex = i
       bestScore = score
@@ -121,6 +121,8 @@ export async function parseExcelFile(file) {
         name:     get(row, 'name'),
         company:  get(row, 'company'),
         phone:    get(row, 'phone'),
+        lng:      get(row, 'lng'),
+        lat:      get(row, 'lat'),
       })
     }
   }
