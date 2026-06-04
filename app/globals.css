@@ -1118,6 +1118,25 @@ button.map-stat-card:focus-visible,
 .map-radius-badge .anticon{
   color:var(--color-primary-light);
 }
+.map-radius-badge .ant-select{
+  min-width:76px;
+}
+.map-radius-badge .ant-select-selector{
+  height:24px!important;
+  min-height:24px!important;
+  padding:0 22px 0 8px!important;
+  border-radius:7px!important;
+  background:color-mix(in srgb,var(--color-primary) 9%,var(--color-surface))!important;
+}
+.map-radius-badge .ant-select-selection-item{
+  line-height:22px!important;
+  color:var(--color-primary-light)!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.map-radius-badge .ant-select-arrow{
+  right:7px!important;
+}
 .map-save-bar,
 .map-clear-point{
   bottom:38px;
