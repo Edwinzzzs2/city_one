@@ -5,7 +5,7 @@ import {
 } from 'antd'
 import {
   AimOutlined, CloseOutlined, CompassOutlined, EnvironmentOutlined,
-  ReloadOutlined, SaveOutlined, SyncOutlined,
+  ReloadOutlined, SaveOutlined, SearchOutlined, SyncOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -108,7 +108,8 @@ function hasLocation(row = {}) {
 }
 
 function isManualLocation(row = {}) {
-  return String(row.geocode_status || '').startsWith('manual')
+  const status = String(row.geocode_status || '')
+  return status === 'manual_map' || status === 'manual'
 }
 
 function normalizePoint(row) {
@@ -279,6 +280,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const [pointsLoading, setPointsLoading] = useState(false)
   const [mapReady, setMapReady] = useState(false)
   const [listMode, setListMode] = useState('located')
+  const [listFilterText, setListFilterText] = useState('')
   const [showProtection, setShowProtection] = useState(true)
   const [selectedPoint, setSelectedPoint] = useState(null)
   const [manualPoint, setManualPoint] = useState(null)
@@ -295,6 +297,11 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const amapSecurityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_CODE || ''
   const activeCheckPoint = manualPoint || newPoint
   const isManualDraft = Boolean(manualPoint && selectedPoint)
+  const filteredListRows = useMemo(() => {
+    const keyword = listFilterText.trim().toLowerCase()
+    if (!keyword) return listRows
+    return listRows.filter(row => searchTextForRow(row).toLowerCase().includes(keyword))
+  }, [listFilterText, listRows])
 
   useEffect(() => {
     selectedPointRef.current = selectedPoint
@@ -615,7 +622,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
           id: row.id,
           lng: point.lng,
           lat: point.lat,
-          geocodeStatus: options.status || 'manual',
+          geocodeStatus: options.status || 'manual_map',
           geocodeLevel: options.level || null,
           geocodeAddress: options.address || point.formattedAddress || null,
         }),
@@ -658,7 +665,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         lat: data.point.lat,
         formattedAddress: data.point.formattedAddress,
       }, {
-        status: 'manual_geocode',
+        status: 'auto_geocode',
         level: data.point.level,
         address: data.point.formattedAddress,
       })
@@ -750,6 +757,13 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     }
   }, [message, searchMode, searchQuery, selectedPoint])
 
+  const searchSelectedPointAddress = useCallback(() => {
+    if (!selectedPoint) return
+    const keyword = searchTextForRow(selectedPoint)
+    setMapSearchText(keyword)
+    handleMapSearch(keyword)
+  }, [handleMapSearch, selectedPoint])
+
   const handleGeocodeMissing = useCallback(async () => {
     setGeocoding(true)
     setGeocodeProgress({ updated: 0, failed: 0, remaining: summary.missing })
@@ -805,7 +819,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             <button
               type="button"
               className={`map-stat-card ${listMode === 'located' ? 'is-active' : ''}`}
-              onClick={() => setListMode('located')}
+              onClick={() => {
+                setListMode('located')
+                setListFilterText('')
+              }}
             >
               <strong>{summary.located}</strong>
               <span>已落点</span>
@@ -813,7 +830,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             <button
               type="button"
               className={`map-stat-card ${listMode === 'missing' ? 'is-active' : ''}`}
-              onClick={() => setListMode('missing')}
+              onClick={() => {
+                setListMode('missing')
+                setListFilterText('')
+              }}
             >
               <strong>{summary.missing}</strong>
               <span>待补坐标</span>
@@ -821,7 +841,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             <button
               type="button"
               className={`map-stat-card ${listMode === 'manual' ? 'is-active' : ''}`}
-              onClick={() => setListMode('manual')}
+              onClick={() => {
+                setListMode('manual')
+                setListFilterText('')
+              }}
             >
               <strong>{summary.manual}</strong>
               <span>手动打点</span>
@@ -864,20 +887,28 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               1公里圈
             </Checkbox>
           </div>
+          <Input
+            className="map-list-filter"
+            prefix={<SearchOutlined />}
+            value={listFilterText}
+            onChange={event => setListFilterText(event.target.value)}
+            allowClear
+            placeholder="搜索门店名、省市区或地址"
+          />
           {summary.listLimited && (
             <Text className="map-help-text">当前列表最多显示 1000 条，可以搜索缩小范围。</Text>
           )}
           {pointsLoading ? (
             <div className="map-list-loading"><Spin /></div>
-          ) : listRows.length === 0 ? (
+          ) : filteredListRows.length === 0 ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={listMode === 'missing' ? '暂无待补坐标' : listMode === 'manual' ? '暂无手动打点' : '暂无可显示点位'}
+              description={listFilterText ? '没有匹配的点位' : listMode === 'missing' ? '暂无待补坐标' : listMode === 'manual' ? '暂无手动打点' : '暂无可显示点位'}
             />
           ) : (
             <List
               className="map-point-list"
-              dataSource={listRows}
+              dataSource={filteredListRows}
               renderItem={point => (
                 <List.Item
                   className={selectedPoint?.id === point.id ? 'is-active' : ''}
@@ -911,8 +942,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                           type={selectedPoint?.id === point.id ? 'primary' : 'default'}
                           onClick={() => {
                             selectPoint(point)
-                            setMapSearchText(searchTextForRow(point))
-                            message.info('可以在地图搜索候选点，或直接点击地图后保存定点')
+                            const keyword = searchTextForRow(point)
+                            setMapSearchText(keyword)
+                            handleMapSearch(keyword)
+                            message.info('请选择地图搜索候选点，或直接点击地图后保存定点')
                           }}
                         >
                           定点
@@ -962,21 +995,32 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         </Tooltip>
         {selectedPoint && (
           <div className="map-save-bar">
-            <span className="map-save-title">{formatPointName(selectedPoint)}</span>
-            {manualPoint && <Tag color="purple">待保存</Tag>}
-            <Button
-              size="small"
-              icon={<SaveOutlined />}
-              type="primary"
-              disabled={!manualPoint}
-              loading={savingId === selectedPoint.id}
-              onClick={() => saveLocation(selectedPoint, manualPoint, { status: 'manual_map' })}
-            >
-              保存
-            </Button>
-            <Button size="small" icon={<CloseOutlined />} onClick={cancelSelectedPoint}>
-              取消
-            </Button>
+            <div className="map-save-info">
+              <div className="map-save-title">
+                {formatPointName(selectedPoint)}
+                {manualPoint && <Tag color="purple">待保存</Tag>}
+              </div>
+              <div className="map-save-meta">{fullRegion(selectedPoint)}</div>
+              {selectedPoint.address && <div className="map-save-address">{selectedPoint.address}</div>}
+            </div>
+            <div className="map-save-actions">
+              <Button size="small" icon={<SearchOutlined />} onClick={searchSelectedPointAddress}>
+                搜地址
+              </Button>
+              <Button
+                size="small"
+                icon={<SaveOutlined />}
+                type="primary"
+                disabled={!manualPoint}
+                loading={savingId === selectedPoint.id}
+                onClick={() => saveLocation(selectedPoint, manualPoint, { status: 'manual_map' })}
+              >
+                保存
+              </Button>
+              <Button size="small" icon={<CloseOutlined />} onClick={cancelSelectedPoint}>
+                取消
+              </Button>
+            </div>
           </div>
         )}
         {!selectedPoint && activeCheckPoint && (

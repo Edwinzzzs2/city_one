@@ -886,6 +886,13 @@ button.map-stat-card:focus-visible,
   color:var(--text-muted)!important;
   font-size:12px;
 }
+.map-list-filter{
+  flex:0 0 auto;
+  margin-bottom:8px;
+}
+.map-list-filter.ant-input-affix-wrapper{
+  height:34px!important;
+}
 .map-list-loading{
   display:flex;
   flex:1 1 auto;
@@ -1121,21 +1128,54 @@ button.map-stat-card:focus-visible,
 }
 .map-save-bar{
   display:flex;
-  max-width:min(420px,calc(100% - 28px));
+  width:min(520px,calc(100% - 28px));
+  align-items:flex-end;
+  justify-content:space-between;
+  padding:9px 10px;
+  gap:10px;
+}
+.map-save-info{
+  min-width:0;
+  flex:1;
 }
 .map-save-title{
-  max-width:150px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  display:flex;
+  align-items:center;
+  gap:6px;
   color:var(--text-primary);
-  font-size:12px;
+  font-size:13px;
   font-weight:800;
+  line-height:1.25;
+  word-break:break-word;
+}
+.map-save-meta,
+.map-save-address{
+  margin-top:3px;
+  color:var(--text-muted);
+  font-size:11px;
+  line-height:1.35;
+  word-break:break-word;
+}
+.map-save-address{
+  color:var(--text-secondary);
+  display:-webkit-box;
+  overflow:hidden;
+  -webkit-line-clamp:1;
+  -webkit-box-orient:vertical;
 }
 .map-save-bar .ant-tag{
   margin-inline-end:0!important;
+  flex-shrink:0;
 }
-.map-save-bar .ant-btn{
+.map-save-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:6px;
+}
+.map-save-actions .ant-btn{
   height:28px!important;
   padding-inline:8px!important;
   font-size:12px!important;
@@ -1606,8 +1646,23 @@ button.map-stat-card:focus-visible,
     bottom:40px;
     max-width:calc(100% - 20px);
   }
-  .map-save-title{
-    max-width:110px;
+  .map-save-bar{
+    width:calc(100% - 20px);
+    align-items:flex-start;
+    flex-direction:column;
+    gap:8px;
+  }
+  .map-save-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .map-save-actions .ant-btn{
+    flex:0 0 auto;
+  }
+  .map-save-title,
+  .map-save-meta,
+  .map-save-address{
+    font-size:12px;
   }
   .map-point-label{
     max-width:min(190px,70vw);

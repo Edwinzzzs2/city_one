@@ -23,7 +23,7 @@ export async function POST(request) {
     const id = parseId(body.id)
     const lng = parseCoordinate(body.lng, '经度', -180, 180)
     const lat = parseCoordinate(body.lat, '纬度', -90, 90)
-    const geocodeStatus = String(body.geocodeStatus || 'manual').slice(0, 80)
+    const geocodeStatus = String(body.geocodeStatus || 'manual_map').slice(0, 80)
     const geocodeLevel = body.geocodeLevel ? String(body.geocodeLevel).slice(0, 80) : null
     const geocodeAddress = body.geocodeAddress ? String(body.geocodeAddress) : null
 

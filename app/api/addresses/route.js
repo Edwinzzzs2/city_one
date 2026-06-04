@@ -47,7 +47,7 @@ function appendCondition(where, condition) {
 
 function getListWhere(where, listMode) {
   if (listMode === 'missing') return appendCondition(where, '(lng IS NULL OR lat IS NULL)')
-  if (listMode === 'manual') return appendCondition(where, "geocode_status LIKE 'manual%'")
+  if (listMode === 'manual') return appendCondition(where, "(geocode_status = 'manual_map' OR geocode_status = 'manual')")
   if (listMode === 'all') return where
   return appendCondition(where, 'lng IS NOT NULL AND lat IS NOT NULL')
 }
@@ -68,7 +68,7 @@ async function getMapRows({ q, city, listMode = 'located' }) {
          COUNT(*)::int AS total,
          CAST(COUNT(*) FILTER (WHERE lng IS NOT NULL AND lat IS NOT NULL) AS int) AS located,
          CAST(COUNT(*) FILTER (WHERE lng IS NULL OR lat IS NULL) AS int) AS missing,
-         CAST(COUNT(*) FILTER (WHERE geocode_status LIKE 'manual%') AS int) AS manual
+         CAST(COUNT(*) FILTER (WHERE geocode_status = 'manual_map' OR geocode_status = 'manual') AS int) AS manual
        FROM city_addresses
        ${where}`,
       params
