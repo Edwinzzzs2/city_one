@@ -286,7 +286,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const [mapSearchLoading, setMapSearchLoading] = useState(false)
   const [mapSearchResults, setMapSearchResults] = useState([])
   const [newPoint, setNewPoint] = useState(null)
-  const [nearest, setNearest] = useState(null)
   const [savingId, setSavingId] = useState(null)
   const [autoGeocodingId, setAutoGeocodingId] = useState(null)
   const [geocoding, setGeocoding] = useState(false)
@@ -296,7 +295,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const amapSecurityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_CODE || ''
   const activeCheckPoint = manualPoint || newPoint
   const isManualDraft = Boolean(manualPoint && selectedPoint)
-  const isConflict = nearest?.distance <= PROTECTION_RADIUS
 
   useEffect(() => {
     selectedPointRef.current = selectedPoint
@@ -429,9 +427,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     return points
   }, [isManualDraft, points, selectedPoint])
 
-  useEffect(() => {
-    setNearest(findNearest(activeCheckPoint, nearestCandidates, amapRef.current))
-  }, [activeCheckPoint, nearestCandidates])
+  const nearest = useMemo(() => (
+    findNearest(activeCheckPoint, nearestCandidates, amapRef.current)
+  ), [activeCheckPoint, nearestCandidates])
+  const isConflict = nearest?.distance <= PROTECTION_RADIUS
 
   useEffect(() => {
     const map = mapRef.current
@@ -507,6 +506,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
     clearOverlays(analysisOverlaysRef)
     const overlays = []
+    const fitTargets = []
+    let fitFrame = null
 
     if (activeCheckPoint) {
       const activeMarker = new AMap.Marker({
@@ -524,6 +525,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         geocode_status: isManualDraft ? 'manual_preview' : 'new_preview',
       })
       overlays.push(activeMarker)
+      fitTargets.push(activeMarker)
       overlays.push(new AMap.Marker({
         position: [activeCheckPoint.lng, activeCheckPoint.lat],
         content: markerLabelContent(
@@ -552,6 +554,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       })
       bindMarkerInfo(nearestMarker, nearest.point)
       overlays.push(nearestMarker)
+      fitTargets.push(nearestMarker)
       overlays.push(new AMap.Marker({
         position: [nearest.point.lng, nearest.point.lat],
         content: markerLabelContent('nearest', '最近门店', nearest.point),
@@ -590,8 +593,14 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (overlays.length === 0) return
     map.add(overlays)
     analysisOverlaysRef.current = overlays
-    if (activeCheckPoint) {
-      map.setFitView(overlays, false, [90, 90, 90, 90])
+    if (activeCheckPoint && nearest?.point && fitTargets.length > 1) {
+      fitFrame = window.requestAnimationFrame(() => {
+        map.setFitView(fitTargets, true, [180, 90, 140, 90], 16)
+      })
+    }
+
+    return () => {
+      if (fitFrame) window.cancelAnimationFrame(fitFrame)
     }
   }, [activeCheckPoint, bindMarkerInfo, clearOverlays, isConflict, isManualDraft, mapReady, nearest, selectedPoint])
 
@@ -675,11 +684,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     }
     setMapSearchText(searchLabel)
     setMapSearchResults([])
-
-    const map = mapRef.current
-    if (map) {
-      map.setZoomAndCenter(16, [poi.lng, poi.lat])
-    }
 
     if (selectedPoint) {
       setManualPoint(point)
