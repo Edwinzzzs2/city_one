@@ -18,7 +18,7 @@ Options:
   --restart-cmd <command>      1Panel/custom restart command, required when --service command
   --supervisor-program <name>  Supervisor program name, required when --service supervisor
   --docker-container <name>    Docker container name/id, required when --service docker
-  --pm2-name <name>            PM2 app name (default: package name or city-one)
+  --pm2-name <name>            PM2 app name (default: package name or project directory)
   --systemd-service <name>     systemd service name, required when --service systemd
   --allow-dirty                Allow running when git working tree has local changes
   --skip-pull                  Skip git pull step
@@ -283,7 +283,7 @@ cd "$REPO_DIR"
 if [[ -z "$PM2_NAME" ]]; then
   PM2_NAME="$(read_package_name)"
 fi
-PM2_NAME="${PM2_NAME:-city-one}"
+PM2_NAME="${PM2_NAME:-$(basename "$REPO_DIR")}"
 
 case "$SERVICE_TYPE" in
   1panel|command|supervisor|docker|pm2|systemd) ;;
