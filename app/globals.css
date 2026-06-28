@@ -434,6 +434,31 @@ body.is-scroll-locked .app-shell{
   color:var(--text-muted)!important;
   font-weight:750!important;
 }
+.view-switch .ant-segmented-group{
+  height:100%;
+  align-items:center;
+}
+.view-switch .ant-segmented-item-label{
+  min-height:30px!important;
+  padding:0 10px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px;
+  line-height:1!important;
+}
+.view-switch .ant-segmented-item-icon{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin-inline-end:0!important;
+  line-height:1!important;
+}
+.view-switch .ant-segmented-item-icon .anticon,
+.view-switch .ant-segmented-item-icon svg{
+  display:block;
+  line-height:1;
+}
 .view-switch .ant-segmented-item-selected{
   background:var(--color-surface)!important;
   color:var(--color-primary-light)!important;
@@ -1754,9 +1779,27 @@ button.map-stat-card:focus-visible,
     width:76px;
     flex-shrink:0;
   }
+  .view-switch .ant-segmented-group{
+    width:100%;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    align-items:center;
+  }
   .view-switch .ant-segmented-item{
-    min-width:32px!important;
-    padding-inline:6px!important;
+    min-width:0!important;
+    width:100%!important;
+    padding:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+  }
+  .view-switch .ant-segmented-item-label{
+    width:100%;
+    min-height:30px!important;
+    padding:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
   }
   .view-switch-label{
     display:none;
@@ -1883,9 +1926,13 @@ button.map-stat-card:focus-visible,
     height:32px;
   }
   .view-switch .ant-segmented-item{
-    min-width:28px!important;
+    min-width:0!important;
     min-height:24px!important;
-    padding-inline:5px!important;
+    padding:0!important;
+  }
+  .view-switch .ant-segmented-item-label{
+    min-height:24px!important;
+    padding:0!important;
   }
   .header-search .ant-input-affix-wrapper{
     height:40px!important;

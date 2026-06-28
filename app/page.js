@@ -20,7 +20,7 @@ const PULL_REFRESH_IGNORED_SELECTOR = '.ant-modal-root,.ant-drawer,.ant-select-d
 
 function MainApp({ themeMode, onToggleTheme }) {
   const { message } = App.useApp()
-  const { rawRows, setRawRows, settings, initSettings } = useDataStore()
+  const { rawRows, setRawRows } = useDataStore()
 
   const [searchQ, setSearchQ] = useState('')
   const [searchMode, setSearchMode] = useState('city')
@@ -38,9 +38,6 @@ function MainApp({ themeMode, onToggleTheme }) {
   const pullStartY = useRef(0)
   const pullTracking = useRef(false)
   const searchTerm = searchQ.trim()
-
-  // 初始化客户端 settings
-  useEffect(() => { initSettings() }, [])
 
   // 加载城市统计
   const loadStats = useCallback(async ({ silent = false } = {}) => {
@@ -384,17 +381,16 @@ function MainApp({ themeMode, onToggleTheme }) {
 }
 
 export default function Page() {
-  const [themeMode, setThemeMode] = useState('light')
+  const { settings, initSettings, updateLocalSettings } = useDataStore()
+  const themeMode = settings.themeMode || 'light'
 
   useEffect(() => {
-    const saved = window.localStorage.getItem('cityAddressTheme')
-    setThemeMode(saved || 'light')
-  }, [])
+    initSettings()
+  }, [initSettings])
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode
     document.documentElement.style.colorScheme = themeMode
-    window.localStorage.setItem('cityAddressTheme', themeMode)
   }, [themeMode])
 
   const isDark = themeMode === 'dark'
@@ -426,7 +422,7 @@ export default function Page() {
       <App message={{ top: 88 }}>
         <MainApp
           themeMode={themeMode}
-          onToggleTheme={() => setThemeMode(mode => mode === 'dark' ? 'light' : 'dark')}
+          onToggleTheme={() => updateLocalSettings({ themeMode: themeMode === 'dark' ? 'light' : 'dark' })}
         />
       </App>
     </ConfigProvider>

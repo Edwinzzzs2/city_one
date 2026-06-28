@@ -8,6 +8,7 @@ import {
   ReloadOutlined, SaveOutlined, SearchOutlined, SyncOutlined,
 } from '@ant-design/icons'
 import { readableEventName, trackEvent } from '@/utils/analytics'
+import useDataStore from '@/store/useDataStore'
 
 const { Text } = Typography
 const PROTECTION_RADIUS_OPTIONS = [1, 2, 3, 4, 5]
@@ -272,6 +273,7 @@ function markerInfoContent(point = {}) {
 
 export default function MapView({ searchQuery = '', searchMode = 'city', themeMode = 'light' }) {
   const { message } = App.useApp()
+  const { settings, updateLocalSettings } = useDataStore()
   const mapNodeRef = useRef(null)
   const mapRef = useRef(null)
   const amapRef = useRef(null)
@@ -288,8 +290,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const [mapReady, setMapReady] = useState(false)
   const [listMode, setListMode] = useState('located')
   const [listFilterText, setListFilterText] = useState('')
-  const [protectionRadiusKm, setProtectionRadiusKm] = useState(3)
-  const [showProtection, setShowProtection] = useState(true)
+  const [protectionRadiusKm, setProtectionRadiusKm] = useState(settings.protectionRadiusKm || 3)
+  const [showProtection, setShowProtection] = useState(settings.showProtection ?? true)
   const [selectedPoint, setSelectedPoint] = useState(null)
   const [manualPoint, setManualPoint] = useState(null)
   const [mapSearchText, setMapSearchText] = useState('')
@@ -311,6 +313,35 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (!keyword) return listRows
     return listRows.filter(row => searchTextForRow(row).toLowerCase().includes(keyword))
   }, [listFilterText, listRows])
+
+  useEffect(() => {
+    setProtectionRadiusKm(settings.protectionRadiusKm || 3)
+  }, [settings.protectionRadiusKm])
+
+  useEffect(() => {
+    setShowProtection(settings.showProtection ?? true)
+  }, [settings.showProtection])
+
+  const handleProtectionRadiusChange = useCallback((value) => {
+    setProtectionRadiusKm(value)
+    updateLocalSettings({ protectionRadiusKm: value })
+    trackEvent(readableEventName('调整保护半径', `${value} 公里`), {
+      event_type: 'map_preference_change',
+      preference: 'protection_radius_km',
+      value,
+    })
+  }, [updateLocalSettings])
+
+  const handleShowProtectionChange = useCallback((event) => {
+    const checked = event.target.checked
+    setShowProtection(checked)
+    updateLocalSettings({ showProtection: checked })
+    trackEvent(readableEventName('切换保护圈', checked ? '显示' : '隐藏'), {
+      event_type: 'map_preference_change',
+      preference: 'show_protection',
+      value: checked,
+    })
+  }, [updateLocalSettings])
 
   useEffect(() => {
     const query = listFilterText.trim()
@@ -481,7 +512,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         position: [point.lng, point.lat],
         title: formatPointName(point),
         offset: new AMap.Pixel(-8, -8),
-        content: markerContent(selectedPoint?.id === point.id ? 'selected' : isManualLocation(point) ? 'manual' : 'store'),
+        content: markerContent(selectedPoint?.id === point.id ? 'selected' : 'store'),
         zIndex: selectedPoint?.id === point.id ? 130 : 80,
       })
       marker.on('click', () => {
@@ -499,7 +530,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       if (showProtection && points.length <= 500) {
         const pointColor = selectedPoint?.id === point.id
           ? MAP_COLORS.selected
-          : isManualLocation(point) ? MAP_COLORS.manual : MAP_COLORS.store
+          : MAP_COLORS.store
         overlays.push(new AMap.Circle({
           center: [point.lng, point.lat],
           radius: protectionRadiusMeters,
@@ -1007,7 +1038,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         <div className="map-side-section map-list-section">
           <div className="map-list-head">
             <span>{listMode === 'missing' ? '待补坐标' : listMode === 'manual' ? '手动打点' : '已落点'}</span>
-            <Checkbox checked={showProtection} onChange={event => setShowProtection(event.target.checked)}>
+            <Checkbox checked={showProtection} onChange={handleShowProtectionChange}>
               {protectionRadiusKm}公里圈
             </Checkbox>
           </div>
@@ -1144,7 +1175,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             <Select
               size="small"
               value={protectionRadiusKm}
-              onChange={setProtectionRadiusKm}
+              onChange={handleProtectionRadiusChange}
               popupMatchSelectWidth={false}
               options={PROTECTION_RADIUS_OPTIONS.map(value => ({
                 value,

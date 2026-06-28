@@ -11,6 +11,9 @@ function publicSettings(settings) {
     hasApiKey,
     model: settings.model,
     batchSize: settings.batchSize,
+    themeMode: settings.themeMode,
+    protectionRadiusKm: settings.protectionRadiusKm,
+    showProtection: settings.showProtection,
   }
 }
 
@@ -49,7 +52,15 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok: true,
-      settings: publicSettings({ apiBaseUrl, apiKey, model, batchSize }),
+      settings: publicSettings({
+        apiBaseUrl,
+        apiKey,
+        model,
+        batchSize,
+        themeMode: current.themeMode,
+        protectionRadiusKm: current.protectionRadiusKm,
+        showProtection: current.showProtection,
+      }),
     })
   } catch (e) {
     console.error('[POST /api/settings]', e)
