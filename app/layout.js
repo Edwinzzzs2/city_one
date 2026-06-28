@@ -1,4 +1,5 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
+import UmamiAnalytics from '@/components/UmamiAnalytics'
 import './globals.css'
 
 export const metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body>
+        <UmamiAnalytics />
         <AntdRegistry>{children}</AntdRegistry>
       </body>
     </html>

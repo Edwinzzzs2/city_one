@@ -268,7 +268,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const mapRef = useRef(null)
   const amapRef = useRef(null)
   const infoWindowRef = useRef(null)
-  const selectedPointRef = useRef(null)
   const storeOverlaysRef = useRef([])
   const analysisOverlaysRef = useRef([])
 
@@ -304,10 +303,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (!keyword) return listRows
     return listRows.filter(row => searchTextForRow(row).toLowerCase().includes(keyword))
   }, [listFilterText, listRows])
-
-  useEffect(() => {
-    selectedPointRef.current = selectedPoint
-  }, [selectedPoint])
 
   const selectPoint = useCallback((row, { keepDraft = false } = {}) => {
     const point = normalizePoint(row)
@@ -378,23 +373,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         })
         map.addControl(new AMap.Scale())
         map.addControl(new AMap.ToolBar({ position: { top: '16px', right: '16px' } }))
-        map.on('click', (event) => {
-          const lng = event.lnglat?.getLng ? event.lnglat.getLng() : event.lnglat?.lng
-          const lat = event.lnglat?.getLat ? event.lnglat.getLat() : event.lnglat?.lat
-          if (!isValidCoordinate(lng, lat)) return
-
-          const currentSelected = selectedPointRef.current
-          if (currentSelected) {
-            setManualPoint({ lng, lat, address: '地图定点' })
-            setNewPoint(null)
-            setMapSearchResults([])
-            message.info('已选择定点位置，保存后会写入该门店')
-            return
-          }
-
-          setNewPoint({ lng, lat, address: '地图选点' })
-          setMapSearchResults([])
-        })
 
         mapRef.current = map
         setMapReady(true)
@@ -416,7 +394,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       amapRef.current = null
       infoWindowRef.current = null
     }
-  }, [amapKey, amapSecurityCode, clearOverlays, message])
+  }, [amapKey, amapSecurityCode, clearOverlays])
 
   useEffect(() => {
     const map = mapRef.current
@@ -436,9 +414,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     return points
   }, [isManualDraft, points, selectedPoint])
 
-  const nearest = useMemo(() => (
-    findNearest(activeCheckPoint, nearestCandidates, amapRef.current)
-  ), [activeCheckPoint, nearestCandidates])
+  const nearest = useMemo(() => {
+    if (isManualDraft) return null
+    return findNearest(activeCheckPoint, nearestCandidates, amapRef.current)
+  }, [activeCheckPoint, isManualDraft, nearestCandidates])
   const isConflict = nearest?.distance <= protectionRadiusMeters
 
   useEffect(() => {
@@ -697,13 +676,13 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (selectedPoint) {
       setManualPoint(point)
       setNewPoint(null)
-      message.success('已定位为待保存点，可继续点地图微调')
+      message.success('已定位为待保存点，保存后会写入该门店')
       return
     }
 
     setManualPoint(null)
     setNewPoint(point)
-    message.success('已作为新点进行校验')
+    message.success('已作为搜索点进行距离校验')
   }, [message, selectedPoint])
 
   const clearMapSearchState = useCallback(() => {
@@ -947,7 +926,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                             const keyword = searchTextForRow(point)
                             setMapSearchText(keyword)
                             handleMapSearch(keyword)
-                            message.info('请选择地图搜索候选点，或直接点击地图后保存定点')
+                            message.info('请在地图搜索框选择候选点，保存后会写入该门店坐标')
                           }}
                         >
                           定点
@@ -989,7 +968,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             />
           </div>
         )}
-        <Tooltip title={selectedPoint ? '当前会为选中门店定点' : '点击地图可放置新点'}>
+        <Tooltip title={selectedPoint ? '通过搜索候选点为选中门店定点' : '通过搜索地址查看最近门店距离'}>
           <div className="map-radius-badge">
             <AimOutlined />
             <span>保护半径</span>
