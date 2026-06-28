@@ -14,6 +14,13 @@ const PROTECTION_RADIUS_OPTIONS = [1, 2, 3, 4, 5]
 const DEFAULT_CENTER = [116.397428, 39.90923]
 const GEOCODE_BATCH_SIZE = 10
 const GEOCODE_DELAY_MS = 450
+const MAP_COLORS = {
+  store: '#0f6f62',
+  manual: '#b65e3f',
+  selected: '#b58419',
+  safe: '#2f9361',
+  danger: '#bf3f35',
+}
 let amapLoadPromise = null
 
 function loadAmap({ key, securityCode }) {
@@ -490,13 +497,16 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       overlays.push(marker)
 
       if (showProtection && points.length <= 500) {
+        const pointColor = selectedPoint?.id === point.id
+          ? MAP_COLORS.selected
+          : isManualLocation(point) ? MAP_COLORS.manual : MAP_COLORS.store
         overlays.push(new AMap.Circle({
           center: [point.lng, point.lat],
           radius: protectionRadiusMeters,
-          strokeColor: selectedPoint?.id === point.id ? '#f59e0b' : isManualLocation(point) ? '#7c3aed' : '#2563eb',
+          strokeColor: pointColor,
           strokeOpacity: selectedPoint?.id === point.id ? 0.48 : 0.18,
           strokeWeight: selectedPoint?.id === point.id ? 2 : 1,
-          fillColor: selectedPoint?.id === point.id ? '#f59e0b' : isManualLocation(point) ? '#7c3aed' : '#2563eb',
+          fillColor: pointColor,
           fillOpacity: selectedPoint?.id === point.id ? 0.06 : 0.035,
           zIndex: selectedPoint?.id === point.id ? 40 : 20,
         }))
@@ -577,16 +587,16 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       overlays.push(new AMap.Circle({
         center: [nearest.point.lng, nearest.point.lat],
         radius: protectionRadiusMeters,
-        strokeColor: isConflict ? '#dc2626' : '#16a34a',
+        strokeColor: isConflict ? MAP_COLORS.danger : MAP_COLORS.safe,
         strokeOpacity: 0.78,
         strokeWeight: 2,
-        fillColor: isConflict ? '#dc2626' : '#16a34a',
+        fillColor: isConflict ? MAP_COLORS.danger : MAP_COLORS.safe,
         fillOpacity: 0.08,
         zIndex: 60,
       }))
       overlays.push(new AMap.Polyline({
         path: [[activeCheckPoint.lng, activeCheckPoint.lat], [nearest.point.lng, nearest.point.lat]],
-        strokeColor: isConflict ? '#dc2626' : '#16a34a',
+        strokeColor: isConflict ? MAP_COLORS.danger : MAP_COLORS.safe,
         strokeOpacity: 0.82,
         strokeWeight: 3,
         strokeStyle: 'dashed',

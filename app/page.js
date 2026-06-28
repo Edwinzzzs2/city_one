@@ -215,11 +215,11 @@ function MainApp({ themeMode, onToggleTheme }) {
           {/* Logo */}
           <div className="brand-block">
             <div className="brand-icon">
-              <DatabaseOutlined />
+              <img src="/icon-192.png" alt="" aria-hidden="true" />
             </div>
             <div>
               <div className="brand-title">
-                城市地址
+                校区地址
               </div>
               {totalRows > 0 && (
                 <div className="brand-meta">
@@ -235,7 +235,7 @@ function MainApp({ themeMode, onToggleTheme }) {
             <div className="header-search-combo">
               <Input
                 prefix={<SearchOutlined style={{ color: 'var(--text-muted)' }} />}
-                placeholder={searchMode === 'city' ? '搜索城市名称...' : '搜索地址、机构、电话...'}
+                placeholder={searchMode === 'city' ? '输入城市名...' : '查地址 / 机构 / 电话...'}
                 value={searchQ} onChange={e => setSearchQ(e.target.value)}
                 allowClear disabled={stats.length === 0} style={{ height: 36 }}
               />
@@ -348,9 +348,9 @@ function MainApp({ themeMode, onToggleTheme }) {
         {viewMode === 'list' && !searchTerm && (
           <section className="overview-panel" aria-label="数据概览">
             <div className="overview-copy">
-              <span className="overview-kicker">Address Workspace</span>
-              <h1>全国校区地址库</h1>
-              <p>按城市快速浏览地址数据，支持关键词检索、批量导入与地图校验。</p>
+              <span className="overview-kicker">Address Ledger</span>
+              <h1>校区地址台账</h1>
+              <p>按城市管理校区地址、联系人与坐标状态，导入后的数据可直接进入地图校验和坐标补齐。</p>
             </div>
             <div className="overview-stats" aria-label="当前数据统计">
               <div className="overview-stat">
@@ -404,21 +404,21 @@ export default function Page() {
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: isDark ? '#7ca7ff' : '#1f5eff',
-          colorBgBase: isDark ? '#0c1220' : '#f5f7fb',
-          colorBgContainer: isDark ? '#111a2b' : '#ffffff',
-          colorBgElevated: isDark ? '#162238' : '#ffffff',
-          colorBorder: isDark ? 'rgba(148,163,184,0.22)' : '#d8e0ec',
-          borderRadius: 12,
-          fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif",
-          colorText: isDark ? '#eef3ff' : '#111827',
-          colorTextSecondary: isDark ? '#b5c0d4' : '#526071',
-          colorTextTertiary: isDark ? '#7d8aa2' : '#7a8798',
+          colorPrimary: isDark ? '#72c8b8' : '#0f6f62',
+          colorBgBase: isDark ? '#101714' : '#f5f7f1',
+          colorBgContainer: isDark ? '#18231f' : '#fbfcf8',
+          colorBgElevated: isDark ? '#1e2a25' : '#fbfcf8',
+          colorBorder: isDark ? 'rgba(177,194,173,0.22)' : '#d9e0d5',
+          borderRadius: 8,
+          fontFamily: "'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif",
+          colorText: isDark ? '#edf4ee' : '#18211d',
+          colorTextSecondary: isDark ? '#bdcbbf' : '#4c5d53',
+          colorTextTertiary: isDark ? '#879589' : '#748078',
         },
         components: {
-          Button: { borderRadius: 12 },
-          Input: { borderRadius: 12 },
-          Modal: { borderRadiusLG: 14 },
+          Button: { borderRadius: 8 },
+          Input: { borderRadius: 8 },
+          Modal: { borderRadiusLG: 8 },
           Drawer: { borderRadiusLG: 0 },
         }
       }}

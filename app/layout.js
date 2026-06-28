@@ -3,17 +3,17 @@ import UmamiAnalytics from '@/components/UmamiAnalytics'
 import './globals.css'
 
 export const metadata = {
-  title: '城市地址管理系统',
-  description: 'AI 驱动的城市地址导入与搜索系统',
+  title: '校区地址台账',
+  description: '城市校区地址导入、检索与地图校验工具',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: '/icon-512.png',
+    apple: '/icon-192.png',
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: '城市地址',
+    title: '校区地址',
   },
 }
 
@@ -21,7 +21,7 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#2563eb',
+  themeColor: '#0f6f62',
 }
 
 export default function RootLayout({ children }) {
