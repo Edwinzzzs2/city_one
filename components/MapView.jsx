@@ -15,6 +15,7 @@ const PROTECTION_RADIUS_OPTIONS = [1, 2, 3, 4, 5]
 const DEFAULT_CENTER = [116.397428, 39.90923]
 const GEOCODE_BATCH_SIZE = 10
 const GEOCODE_DELAY_MS = 450
+const MOBILE_MEDIA_QUERY = '(max-width: 720px)'
 const MAP_COLORS = {
   store: '#0f6f62',
   manual: '#b65e3f',
@@ -23,6 +24,10 @@ const MAP_COLORS = {
   danger: '#bf3f35',
 }
 let amapLoadPromise = null
+
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia?.(MOBILE_MEDIA_QUERY).matches
+}
 
 function loadAmap({ key, securityCode }) {
   if (typeof window === 'undefined') return Promise.reject(new Error('地图只能在浏览器中加载'))
@@ -424,6 +429,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
           center: DEFAULT_CENTER,
           zoom: 11,
           resizeEnable: true,
+          animateEnable: !isMobileViewport(),
           mapStyle: themeMode === 'dark' ? 'amap://styles/darkblue' : 'amap://styles/normal',
         })
         map.addControl(new AMap.Scale())
@@ -549,7 +555,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     map.add(overlays)
     storeOverlaysRef.current = overlays
     if (!selectedPoint && markers.length > 0) {
-      map.setFitView(markers, false, [58, 40, 40, 40])
+      map.setFitView(markers, isMobileViewport(), [58, 40, 40, 40])
     }
   }, [bindMarkerInfo, clearOverlays, mapReady, points, protectionRadiusMeters, selectPoint, selectedPoint, showProtection])
 
