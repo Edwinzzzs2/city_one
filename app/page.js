@@ -12,6 +12,7 @@ import AiParseModal from '@/components/AiParseModal'
 import SettingsModal from '@/components/SettingsModal'
 import SearchResults from '@/components/SearchResults'
 import MapView from '@/components/MapView'
+import { trackEvent } from '@/utils/analytics'
 
 const PULL_REFRESH_TRIGGER = 68
 const PULL_REFRESH_MAX = 96
@@ -70,10 +71,22 @@ function MainApp({ themeMode, onToggleTheme }) {
       })
       const data = await res.json()
       if (!res.ok || !data.ok) throw new Error(data.error || '搜索失败')
-      setSearchResults(data.rows || [])
+      const rows = data.rows || []
+      setSearchResults(rows)
+      trackEvent('address_search', {
+        mode,
+        query: term,
+        query_length: term.length,
+        result_count: rows.length,
+      })
     } catch (e) {
       if (e.name !== 'AbortError') {
         setSearchResults([])
+        trackEvent('address_search_error', {
+          mode,
+          query: term,
+          query_length: term.length,
+        })
         message.error('搜索失败：' + e.message)
       }
     } finally {
@@ -106,9 +119,16 @@ function MainApp({ themeMode, onToggleTheme }) {
       const raw = await parseExcelFile(file)
       if (raw.length === 0) { message.error('未识别到有效数据，请检查表格格式'); return }
       setRawRows(raw)
+      trackEvent('file_import_read', {
+        row_count: raw.length,
+        file_type: file.name?.split('.').pop()?.toLowerCase(),
+      })
       message.success(`已读取 ${raw.length} 条，请点击「AI 解析」`)
       setAiOpen(true)
     } catch (e) {
+      trackEvent('file_import_error', {
+        file_type: file.name?.split('.').pop()?.toLowerCase(),
+      })
       message.error('文件解析失败：' + e.message)
     } finally {
       setImporting(false)
@@ -233,7 +253,13 @@ function MainApp({ themeMode, onToggleTheme }) {
               className="view-switch"
               size="small"
               value={viewMode}
-              onChange={setViewMode}
+              onChange={(mode) => {
+                setViewMode(mode)
+                trackEvent('operation_click', {
+                  operation: 'view_mode_change',
+                  mode,
+                })
+              }}
               options={[
                 { value: 'list', icon: <UnorderedListOutlined />, label: <span className="view-switch-label">列表</span> },
                 { value: 'map', icon: <EnvironmentOutlined />, label: <span className="view-switch-label">地图</span> },
@@ -243,7 +269,16 @@ function MainApp({ themeMode, onToggleTheme }) {
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
 
             <Tooltip title="导入 Excel / CSV">
-              <Button type="primary" icon={<UploadOutlined />} loading={importing} onClick={() => fileRef.current?.click()} style={{ height: 36 }}>
+              <Button
+                type="primary"
+                icon={<UploadOutlined />}
+                loading={importing}
+                onClick={() => {
+                  trackEvent('operation_click', { operation: 'file_import_open' })
+                  fileRef.current?.click()
+                }}
+                style={{ height: 36 }}
+              >
                 <span className="action-label">导入</span>
               </Button>
             </Tooltip>
@@ -251,7 +286,15 @@ function MainApp({ themeMode, onToggleTheme }) {
             {rawRows.length > 0 && (
               <Tooltip title={`${rawRows.length} 条待 AI 解析`}>
                 <Badge count={rawRows.length} size="small">
-                  <Button icon={<RobotOutlined />} onClick={() => setAiOpen(true)}
+                  <Button
+                    icon={<RobotOutlined />}
+                    onClick={() => {
+                      trackEvent('operation_click', {
+                        operation: 'ai_parse_open',
+                        row_count: rawRows.length,
+                      })
+                      setAiOpen(true)
+                    }}
                     style={{ height: 36, borderColor: 'color-mix(in srgb,var(--color-primary) 42%,var(--color-border))', color: 'var(--color-primary-light)', background: 'color-mix(in srgb,var(--color-primary) 10%,var(--color-surface))' }}>
                     <span className="action-label">AI 解析</span>
                   </Button>
@@ -262,13 +305,26 @@ function MainApp({ themeMode, onToggleTheme }) {
             <Tooltip title={themeMode === 'dark' ? '切换浅色模式' : '切换深色模式'}>
               <Button
                 icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-                onClick={onToggleTheme}
+                onClick={() => {
+                  trackEvent('operation_click', {
+                    operation: 'theme_toggle',
+                    target_theme: themeMode === 'dark' ? 'light' : 'dark',
+                  })
+                  onToggleTheme()
+                }}
                 style={{ height: 36 }}
               />
             </Tooltip>
 
             <Tooltip title="AI 配置">
-              <Button icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)} style={{ height: 36 }} />
+              <Button
+                icon={<SettingOutlined />}
+                onClick={() => {
+                  trackEvent('operation_click', { operation: 'settings_open' })
+                  setSettingsOpen(true)
+                }}
+                style={{ height: 36 }}
+              />
             </Tooltip>
           </Space>
         </div>

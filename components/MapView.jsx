@@ -7,6 +7,7 @@ import {
   AimOutlined, CloseOutlined, CompassOutlined, EnvironmentOutlined,
   ReloadOutlined, SaveOutlined, SearchOutlined, SyncOutlined,
 } from '@ant-design/icons'
+import { trackEvent } from '@/utils/analytics'
 
 const { Text } = Typography
 const PROTECTION_RADIUS_OPTIONS = [1, 2, 3, 4, 5]
@@ -304,6 +305,21 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     return listRows.filter(row => searchTextForRow(row).toLowerCase().includes(keyword))
   }, [listFilterText, listRows])
 
+  useEffect(() => {
+    const query = listFilterText.trim()
+    if (!query) return undefined
+
+    const timer = window.setTimeout(() => {
+      trackEvent('map_list_filter', {
+        query,
+        mode: listMode,
+        result_count: filteredListRows.length,
+      })
+    }, 600)
+
+    return () => window.clearTimeout(timer)
+  }, [filteredListRows.length, listFilterText, listMode])
+
   const selectPoint = useCallback((row, { keepDraft = false } = {}) => {
     const point = normalizePoint(row)
     setSelectedPoint(point)
@@ -460,7 +476,14 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         content: markerContent(selectedPoint?.id === point.id ? 'selected' : isManualLocation(point) ? 'manual' : 'store'),
         zIndex: selectedPoint?.id === point.id ? 130 : 80,
       })
-      marker.on('click', () => selectPoint(point))
+      marker.on('click', () => {
+        selectPoint(point)
+        trackEvent('operation_click', {
+          operation: 'map_marker_select',
+          city: point.city,
+          has_location: hasLocation(point),
+        })
+      })
       bindMarkerInfo(marker, point)
       overlays.push(marker)
 
@@ -615,9 +638,23 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       setSelectedPoint(saved)
       setManualPoint(null)
       await loadPoints()
+      trackEvent('location_save', {
+        status: options.status || 'manual_map',
+        city: row.city,
+        had_location: hasLocation(row),
+        saved_address: options.address || point.formattedAddress || point.address,
+        lng: point.lng,
+        lat: point.lat,
+      })
       message.success('坐标已保存')
       return saved
     } catch (e) {
+      trackEvent('location_save_error', {
+        status: options.status || 'manual_map',
+        city: row?.city,
+        had_location: hasLocation(row),
+        saved_address: options.address || point?.formattedAddress || point?.address,
+      })
       message.error(e.message)
       return null
     } finally {
@@ -650,7 +687,14 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         level: data.point.level,
         address: data.point.formattedAddress,
       })
+      trackEvent('location_auto_geocode', {
+        city: row.city,
+        level: data.point.level,
+      })
     } catch (e) {
+      trackEvent('location_auto_geocode_error', {
+        city: row.city,
+      })
       message.error(e.message)
     } finally {
       setAutoGeocodingId(null)
@@ -676,31 +720,53 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (selectedPoint) {
       setManualPoint(point)
       setNewPoint(null)
+      trackEvent('map_poi_select', {
+        context: 'relocate',
+        city: selectedPoint.city,
+        query: mapSearchText,
+        poi_name: poi.name,
+        poi_address: [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join(''),
+        poi_city: poi.city,
+      })
       message.success('已定位为待保存点，保存后会写入该门店')
       return
     }
 
     setManualPoint(null)
     setNewPoint(point)
+    trackEvent('map_poi_select', {
+      context: 'distance_check',
+      query: mapSearchText,
+      poi_name: poi.name,
+      poi_address: [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join(''),
+      poi_city: poi.city,
+    })
     message.success('已作为搜索点进行距离校验')
-  }, [message, selectedPoint])
+  }, [mapSearchText, message, selectedPoint])
 
   const clearMapSearchState = useCallback(() => {
     setMapSearchText('')
     setMapSearchResults([])
     setNewPoint(null)
     setManualPoint(null)
-  }, [])
+    trackEvent('map_search_clear', {
+      had_selected_store: Boolean(selectedPoint),
+    })
+  }, [selectedPoint])
 
   const cancelSelectedPoint = useCallback(() => {
     const draftPoint = manualPoint
     setSelectedPoint(null)
     setManualPoint(null)
     setMapSearchResults([])
+    trackEvent('location_relocate_cancel', {
+      city: selectedPoint?.city,
+      had_draft: Boolean(draftPoint),
+    })
     if (draftPoint) {
       setNewPoint(draftPoint)
     }
-  }, [manualPoint])
+  }, [manualPoint, selectedPoint])
 
   const handleMapSearch = useCallback(async (value) => {
     const keywords = String(value ?? '').trim()
@@ -726,12 +792,24 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
       const results = data.pois || []
       setMapSearchResults(results)
+      trackEvent('map_search', {
+        context: selectedPoint ? 'relocate' : 'distance_check',
+        query: keywords,
+        query_length: keywords.length,
+        result_count: results.length,
+        city_scope: selectedPoint?.city || (searchMode === 'city' ? searchQuery : ''),
+      })
       if (results.length === 0) {
         message.warning('没有找到地图候选点')
         return
       }
     } catch (e) {
       setMapSearchResults([])
+      trackEvent('map_search_error', {
+        context: selectedPoint ? 'relocate' : 'distance_check',
+        query: keywords,
+        query_length: keywords.length,
+      })
       message.error(e.message)
     } finally {
       setMapSearchLoading(false)
@@ -776,12 +854,20 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       }
 
       await loadPoints()
+      trackEvent('location_batch_geocode', {
+        updated: totalUpdated,
+        failed: totalFailed,
+        remaining: lastRemaining,
+      })
       if (totalUpdated > 0) {
         message.success(`已补齐 ${totalUpdated} 个点位`)
       } else {
         message.info('没有可补齐的点位')
       }
     } catch (e) {
+      trackEvent('location_batch_geocode_error', {
+        missing: summary.missing,
+      })
       message.error(e.message)
     } finally {
       setGeocoding(false)
@@ -803,6 +889,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               onClick={() => {
                 setListMode('located')
                 setListFilterText('')
+                trackEvent('operation_click', {
+                  operation: 'map_list_mode',
+                  mode: 'located',
+                })
               }}
             >
               <strong>{summary.located}</strong>
@@ -814,6 +904,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               onClick={() => {
                 setListMode('missing')
                 setListFilterText('')
+                trackEvent('operation_click', {
+                  operation: 'map_list_mode',
+                  mode: 'missing',
+                })
               }}
             >
               <strong>{summary.missing}</strong>
@@ -825,6 +919,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               onClick={() => {
                 setListMode('manual')
                 setListFilterText('')
+                trackEvent('operation_click', {
+                  operation: 'map_list_mode',
+                  mode: 'manual',
+                })
               }}
             >
               <strong>{summary.manual}</strong>
@@ -842,12 +940,25 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
         <div className="map-side-section">
           <Space size={8} wrap className="map-action-row">
-            <Button icon={<ReloadOutlined />} onClick={loadPoints} loading={pointsLoading}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                trackEvent('operation_click', { operation: 'map_refresh_points' })
+                loadPoints()
+              }}
+              loading={pointsLoading}
+            >
               刷新点位
             </Button>
             <Button
               icon={<SyncOutlined />}
-              onClick={handleGeocodeMissing}
+              onClick={() => {
+                trackEvent('operation_click', {
+                  operation: 'map_batch_geocode',
+                  missing: summary.missing,
+                })
+                handleGeocodeMissing()
+              }}
               loading={geocoding}
               disabled={summary.missing === 0}
             >
@@ -893,7 +1004,14 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               renderItem={point => (
                 <List.Item
                   className={selectedPoint?.id === point.id ? 'is-active' : ''}
-                  onClick={() => selectPoint(point)}
+                  onClick={() => {
+                    selectPoint(point)
+                    trackEvent('operation_click', {
+                      operation: 'map_store_select',
+                      city: point.city,
+                      has_location: hasLocation(point),
+                    })
+                  }}
                 >
                   <div className="map-point-line">
                     <EnvironmentOutlined />
@@ -913,7 +1031,13 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                           icon={<SyncOutlined />}
                           loading={autoGeocodingId === point.id || savingId === point.id}
                           disabled={!canAutoLocate(point)}
-                          onClick={() => handleAutoLocateRow(point)}
+                          onClick={() => {
+                            trackEvent('operation_click', {
+                              operation: hasLocation(point) ? 'location_auto_relocate' : 'location_auto_locate',
+                              city: point.city,
+                            })
+                            handleAutoLocateRow(point)
+                          }}
                         >
                           {hasLocation(point) ? '重定位' : '自动定位'}
                         </Button>
@@ -926,6 +1050,15 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                             const keyword = searchTextForRow(point)
                             setMapSearchText(keyword)
                             handleMapSearch(keyword)
+                            trackEvent('location_relocate_start', {
+                              city: point.city,
+                              had_location: hasLocation(point),
+                            })
+                            trackEvent('operation_click', {
+                              operation: 'location_relocate_start',
+                              city: point.city,
+                              had_location: hasLocation(point),
+                            })
                             message.info('请在地图搜索框选择候选点，保存后会写入该门店坐标')
                           }}
                         >
@@ -995,7 +1128,17 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               {selectedPoint.address && <div className="map-save-address">{selectedPoint.address}</div>}
             </div>
             <div className="map-save-actions">
-              <Button size="small" icon={<SearchOutlined />} onClick={searchSelectedPointAddress}>
+              <Button
+                size="small"
+                icon={<SearchOutlined />}
+                onClick={() => {
+                  trackEvent('operation_click', {
+                    operation: 'location_search_selected_address',
+                    city: selectedPoint.city,
+                  })
+                  searchSelectedPointAddress()
+                }}
+              >
                 搜地址
               </Button>
               <Button
@@ -1004,11 +1147,28 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                 type="primary"
                 disabled={!manualPoint}
                 loading={savingId === selectedPoint.id}
-                onClick={() => saveLocation(selectedPoint, manualPoint, { status: 'manual_map' })}
+                onClick={() => {
+                  trackEvent('operation_click', {
+                    operation: 'location_save',
+                    city: selectedPoint.city,
+                    has_new_point: Boolean(manualPoint),
+                  })
+                  saveLocation(selectedPoint, manualPoint, { status: 'manual_map' })
+                }}
               >
                 保存
               </Button>
-              <Button size="small" icon={<CloseOutlined />} onClick={cancelSelectedPoint}>
+              <Button
+                size="small"
+                icon={<CloseOutlined />}
+                onClick={() => {
+                  trackEvent('operation_click', {
+                    operation: 'location_relocate_cancel',
+                    city: selectedPoint.city,
+                  })
+                  cancelSelectedPoint()
+                }}
+              >
                 取消
               </Button>
             </div>

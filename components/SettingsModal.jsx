@@ -4,6 +4,7 @@ import { Modal, Form, Input, Select, Slider, Button, Alert, Divider, Space } fro
 import { SettingOutlined, KeyOutlined, LinkOutlined } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
 import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
+import { trackEvent } from '@/utils/analytics'
 import { App } from 'antd'
 const PRESET_MODELS = ['gpt-5.5','gpt-5.4','gpt-5.2-pro','gpt-5.2','gpt-5.4-mini','gpt-4o','gpt-4o-mini']
 
@@ -27,6 +28,11 @@ export default function SettingsModal({ open, onClose }) {
       const values = await form.validateFields()
       setSaving(true)
       await updateSettings({ ...values, batchSize: batchVal })
+      trackEvent('settings_save', {
+        model: values.model,
+        batch_size: batchVal,
+        has_api_key: Boolean(values.apiKey || settings.hasApiKey),
+      })
       message.success('AI 配置已保存')
       onClose()
     } catch (e) {

@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Spin } from 'antd'
 import { DatabaseOutlined, EnvironmentOutlined } from '@ant-design/icons'
 import { fuzzyMatch } from '@/utils/fuzzy'
+import { trackEvent } from '@/utils/analytics'
 import CityDetail from './CityDetail'
 
 function cityInitial(name) {
@@ -187,7 +188,18 @@ export default function CityGrid({ stats, loading, searchQuery }) {
               <div className="city-card-grid">
                 {cities.map(({ city, count }, i) => (
                   <div key={city} className="city-card-anim" style={{ '--delay': `${i * 28}ms` }}>
-                    <CityCard city={city} count={count} onClick={() => setSelected({ city, province: prov })} />
+                    <CityCard
+                      city={city}
+                      count={count}
+                      onClick={() => {
+                        setSelected({ city, province: prov })
+                        trackEvent('city_detail_open', {
+                          city,
+                          province: prov,
+                          address_count: count,
+                        })
+                      }}
+                    />
                   </div>
                 ))}
               </div>

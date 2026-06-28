@@ -4,6 +4,7 @@ import { Drawer, Input, List, Tag, Space, Typography, Empty, Spin, Button } from
 import { SearchOutlined, EnvironmentOutlined, CloseOutlined } from '@ant-design/icons'
 import { fuzzyFilter, renderHighlight } from '@/utils/fuzzy'
 import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
+import { trackEvent } from '@/utils/analytics'
 import CopyableAddress from './CopyableAddress'
 
 const { Text } = Typography
@@ -51,6 +52,22 @@ export default function CityDetail({ city, province, open, onClose }) {
   }, [open, city])
 
   const filtered = fuzzyFilter(rows, q, ['address', 'district', 'industry', 'name', 'company'])
+
+  useEffect(() => {
+    const query = q.trim()
+    if (!open || !query) return undefined
+
+    const timer = window.setTimeout(() => {
+      trackEvent('city_detail_search', {
+        city,
+        province,
+        query,
+        result_count: filtered.length,
+      })
+    }, 600)
+
+    return () => window.clearTimeout(timer)
+  }, [city, filtered.length, open, province, q])
 
   const handleTouchStart = (event) => {
     const touch = event.touches?.[0]
