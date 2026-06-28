@@ -12,7 +12,7 @@ import AiParseModal from '@/components/AiParseModal'
 import SettingsModal from '@/components/SettingsModal'
 import SearchResults from '@/components/SearchResults'
 import MapView from '@/components/MapView'
-import { trackEvent } from '@/utils/analytics'
+import { readableEventName, trackEvent } from '@/utils/analytics'
 
 const PULL_REFRESH_TRIGGER = 68
 const PULL_REFRESH_MAX = 96
@@ -73,7 +73,8 @@ function MainApp({ themeMode, onToggleTheme }) {
       if (!res.ok || !data.ok) throw new Error(data.error || '搜索失败')
       const rows = data.rows || []
       setSearchResults(rows)
-      trackEvent('address_search', {
+      trackEvent(readableEventName('搜索地址', term), {
+        event_type: 'address_search',
         mode,
         query: term,
         query_length: term.length,
@@ -82,7 +83,8 @@ function MainApp({ themeMode, onToggleTheme }) {
     } catch (e) {
       if (e.name !== 'AbortError') {
         setSearchResults([])
-        trackEvent('address_search_error', {
+        trackEvent(readableEventName('搜索失败', term), {
+          event_type: 'address_search_error',
           mode,
           query: term,
           query_length: term.length,
@@ -119,14 +121,16 @@ function MainApp({ themeMode, onToggleTheme }) {
       const raw = await parseExcelFile(file)
       if (raw.length === 0) { message.error('未识别到有效数据，请检查表格格式'); return }
       setRawRows(raw)
-      trackEvent('file_import_read', {
+      trackEvent(readableEventName('读取导入文件', `${raw.length} 条`), {
+        event_type: 'file_import_read',
         row_count: raw.length,
         file_type: file.name?.split('.').pop()?.toLowerCase(),
       })
       message.success(`已读取 ${raw.length} 条，请点击「AI 解析」`)
       setAiOpen(true)
     } catch (e) {
-      trackEvent('file_import_error', {
+      trackEvent(readableEventName('导入文件失败', file.name), {
+        event_type: 'file_import_error',
         file_type: file.name?.split('.').pop()?.toLowerCase(),
       })
       message.error('文件解析失败：' + e.message)
@@ -255,7 +259,8 @@ function MainApp({ themeMode, onToggleTheme }) {
               value={viewMode}
               onChange={(mode) => {
                 setViewMode(mode)
-                trackEvent('operation_click', {
+                trackEvent(readableEventName('点击', mode === 'map' ? '切换地图' : '切换列表'), {
+                  event_type: 'operation_click',
                   operation: 'view_mode_change',
                   mode,
                 })
@@ -274,7 +279,10 @@ function MainApp({ themeMode, onToggleTheme }) {
                 icon={<UploadOutlined />}
                 loading={importing}
                 onClick={() => {
-                  trackEvent('operation_click', { operation: 'file_import_open' })
+                  trackEvent(readableEventName('点击', '导入文件'), {
+                    event_type: 'operation_click',
+                    operation: 'file_import_open',
+                  })
                   fileRef.current?.click()
                 }}
                 style={{ height: 36 }}
@@ -289,7 +297,8 @@ function MainApp({ themeMode, onToggleTheme }) {
                   <Button
                     icon={<RobotOutlined />}
                     onClick={() => {
-                      trackEvent('operation_click', {
+                      trackEvent(readableEventName('点击', 'AI 解析'), {
+                        event_type: 'operation_click',
                         operation: 'ai_parse_open',
                         row_count: rawRows.length,
                       })
@@ -306,7 +315,8 @@ function MainApp({ themeMode, onToggleTheme }) {
               <Button
                 icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
                 onClick={() => {
-                  trackEvent('operation_click', {
+                  trackEvent(readableEventName('点击', themeMode === 'dark' ? '切换浅色' : '切换深色'), {
+                    event_type: 'operation_click',
                     operation: 'theme_toggle',
                     target_theme: themeMode === 'dark' ? 'light' : 'dark',
                   })
@@ -320,7 +330,10 @@ function MainApp({ themeMode, onToggleTheme }) {
               <Button
                 icon={<SettingOutlined />}
                 onClick={() => {
-                  trackEvent('operation_click', { operation: 'settings_open' })
+                  trackEvent(readableEventName('点击', 'AI 配置'), {
+                    event_type: 'operation_click',
+                    operation: 'settings_open',
+                  })
                   setSettingsOpen(true)
                 }}
                 style={{ height: 36 }}

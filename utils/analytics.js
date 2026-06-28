@@ -1,4 +1,4 @@
-const MAX_EVENT_NAME_LENGTH = 50
+const MAX_EVENT_NAME_LENGTH = 96
 
 function normalizeEventValue(value) {
   if (value === undefined || value === null || value === '') return undefined
@@ -28,4 +28,12 @@ export function trackEvent(name, data) {
   } catch {
     // Analytics should never break the primary workflow.
   }
+}
+
+export function readableEventName(action, detail) {
+  const prefix = String(action || '').trim()
+  const suffix = String(detail || '').replace(/\s+/g, ' ').trim()
+  const name = suffix ? `${prefix}: ${suffix}` : prefix
+
+  return name.slice(0, MAX_EVENT_NAME_LENGTH)
 }

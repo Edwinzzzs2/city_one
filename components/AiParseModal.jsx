@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
 import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
-import { trackEvent } from '@/utils/analytics'
+import { readableEventName, trackEvent } from '@/utils/analytics'
 
 const { Text, Title } = Typography
 
@@ -72,7 +72,8 @@ export default function AiParseModal({ open, onClose, onImported }) {
 
     try {
       const totalBatches = Math.ceil(rawRows.length / batchSize)
-      trackEvent('ai_parse_start', {
+      trackEvent(readableEventName('开始 AI 解析', `${rawRows.length} 条`), {
+        event_type: 'ai_parse_start',
         row_count: rawRows.length,
         batch_size: batchSize,
         batch_count: totalBatches,
@@ -111,7 +112,8 @@ export default function AiParseModal({ open, onClose, onImported }) {
 
       setParsedRows(results)
       setStep(2)
-      trackEvent('ai_parse_finish', {
+      trackEvent(readableEventName('完成 AI 解析', `${results.length} 条`), {
+        event_type: 'ai_parse_finish',
         row_count: results.length,
         batch_count: totalBatches,
       })
@@ -120,13 +122,15 @@ export default function AiParseModal({ open, onClose, onImported }) {
       if (e.name === 'AbortError' || e.message === '已取消') {
         setStep(0)
         setError('已取消解析')
-        trackEvent('ai_parse_cancel', {
+        trackEvent(readableEventName('取消 AI 解析', `${rawRows.length} 条`), {
+          event_type: 'ai_parse_cancel',
           row_count: rawRows.length,
         })
       } else {
         setError(e.message)
         setStep(0)
-        trackEvent('ai_parse_error', {
+        trackEvent(readableEventName('AI 解析失败', `${rawRows.length} 条`), {
+          event_type: 'ai_parse_error',
           row_count: rawRows.length,
         })
       }
@@ -136,7 +140,9 @@ export default function AiParseModal({ open, onClose, onImported }) {
   const handleCancelParsing = () => {
     abortRef.current = true
     requestRef.current?.abort()
-    trackEvent('ai_parse_cancel_click', {
+    trackEvent(readableEventName('点击', '取消 AI 解析'), {
+      event_type: 'operation_click',
+      operation: 'ai_parse_cancel',
       done: progress.done,
       total: progress.total,
     })
@@ -151,7 +157,8 @@ export default function AiParseModal({ open, onClose, onImported }) {
       })
       const data = await resp.json()
       if (!data.ok) throw new Error(data.error)
-      trackEvent('ai_import_confirm', {
+      trackEvent(readableEventName('确认写入数据', `${parsedRows.length} 条`), {
+        event_type: 'ai_import_confirm',
         mode: importMode,
         row_count: parsedRows.length,
         city_count: new Set(parsedRows.map(r => r.city).filter(Boolean)).size,
@@ -163,7 +170,8 @@ export default function AiParseModal({ open, onClose, onImported }) {
       onClose()
       onImported?.()
     } catch (e) {
-      trackEvent('ai_import_error', {
+      trackEvent(readableEventName('写入数据失败', `${parsedRows.length} 条`), {
+        event_type: 'ai_import_error',
         mode: importMode,
         row_count: parsedRows.length,
       })

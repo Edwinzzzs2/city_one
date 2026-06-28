@@ -4,7 +4,7 @@ import { Drawer, Input, List, Tag, Space, Typography, Empty, Spin, Button } from
 import { SearchOutlined, EnvironmentOutlined, CloseOutlined } from '@ant-design/icons'
 import { fuzzyFilter, renderHighlight } from '@/utils/fuzzy'
 import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
-import { trackEvent } from '@/utils/analytics'
+import { readableEventName, trackEvent } from '@/utils/analytics'
 import CopyableAddress from './CopyableAddress'
 
 const { Text } = Typography
@@ -58,7 +58,8 @@ export default function CityDetail({ city, province, open, onClose }) {
     if (!open || !query) return undefined
 
     const timer = window.setTimeout(() => {
-      trackEvent('city_detail_search', {
+      trackEvent(readableEventName('城市内搜索', query), {
+        event_type: 'city_detail_search',
         city,
         province,
         query,

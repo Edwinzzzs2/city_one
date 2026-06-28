@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Spin } from 'antd'
 import { DatabaseOutlined, EnvironmentOutlined } from '@ant-design/icons'
 import { fuzzyMatch } from '@/utils/fuzzy'
-import { trackEvent } from '@/utils/analytics'
+import { readableEventName, trackEvent } from '@/utils/analytics'
 import CityDetail from './CityDetail'
 
 function cityInitial(name) {
@@ -193,7 +193,8 @@ export default function CityGrid({ stats, loading, searchQuery }) {
                       count={count}
                       onClick={() => {
                         setSelected({ city, province: prov })
-                        trackEvent('city_detail_open', {
+                        trackEvent(readableEventName('打开城市', city), {
+                          event_type: 'city_detail_open',
                           city,
                           province: prov,
                           address_count: count,

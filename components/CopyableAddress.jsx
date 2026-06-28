@@ -2,7 +2,7 @@
 import React from 'react'
 import { App } from 'antd'
 import { CopyOutlined, EnvironmentOutlined } from '@ant-design/icons'
-import { trackEvent } from '@/utils/analytics'
+import { readableEventName, trackEvent } from '@/utils/analytics'
 
 function fallbackCopy(text) {
   const textarea = document.createElement('textarea')
@@ -39,7 +39,8 @@ export default function CopyableAddress({ address, children, className, iconStyl
       } else if (!fallbackCopy(text)) {
         throw new Error('fallback copy failed')
       }
-      trackEvent('address_copy', {
+      trackEvent(readableEventName('复制地址', text), {
+        event_type: 'address_copy',
         surface: className || 'copyable-address',
         address_length: text.length,
       })
@@ -47,7 +48,8 @@ export default function CopyableAddress({ address, children, className, iconStyl
     } catch {
       try {
         if (!fallbackCopy(text)) throw new Error('fallback copy failed')
-        trackEvent('address_copy', {
+        trackEvent(readableEventName('复制地址', text), {
+          event_type: 'address_copy',
           surface: className || 'copyable-address',
           address_length: text.length,
           fallback: true,
