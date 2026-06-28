@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Spin } from 'antd'
-import { EnvironmentOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, EnvironmentOutlined } from '@ant-design/icons'
 import { fuzzyMatch } from '@/utils/fuzzy'
 import CityDetail from './CityDetail'
 
@@ -121,15 +121,15 @@ export default function CityGrid({ stats, loading, searchQuery }) {
   }
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '80px 0' }}><Spin size="large" /></div>
+    return <div className="state-panel"><Spin size="large" /></div>
   }
 
   if (stats.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>📊</div>
-        <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>还没有数据</div>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.8, maxWidth: 300, margin: '0 auto' }}>
+      <div className="state-panel state-panel-empty">
+        <div className="state-panel-icon"><DatabaseOutlined /></div>
+        <div className="state-panel-title">还没有数据</div>
+        <div className="state-panel-desc">
           点击右上角「导入」上传 Excel 文件，<br />再点「AI 解析」自动整理城市地址
         </div>
       </div>
@@ -186,8 +186,7 @@ export default function CityGrid({ stats, loading, searchQuery }) {
               </div>
               <div className="city-card-grid">
                 {cities.map(({ city, count }, i) => (
-                  <div key={city} style={{ animation: `fadeUp 0.3s ease ${i * 35}ms both` }}>
-                    <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>
+                  <div key={city} className="city-card-anim" style={{ '--delay': `${i * 28}ms` }}>
                     <CityCard city={city} count={count} onClick={() => setSelected({ city, province: prov })} />
                   </div>
                 ))}

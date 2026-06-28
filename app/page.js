@@ -276,6 +276,29 @@ function MainApp({ themeMode, onToggleTheme }) {
 
       {/* ===== MAIN ===== */}
       <main className="app-main">
+        {viewMode === 'list' && !searchTerm && (
+          <section className="overview-panel" aria-label="数据概览">
+            <div className="overview-copy">
+              <span className="overview-kicker">Address Workspace</span>
+              <h1>全国校区地址库</h1>
+              <p>按城市快速浏览地址数据，支持关键词检索、批量导入与地图校验。</p>
+            </div>
+            <div className="overview-stats" aria-label="当前数据统计">
+              <div className="overview-stat">
+                <span>{totalCities}</span>
+                <strong>覆盖城市</strong>
+              </div>
+              <div className="overview-stat">
+                <span>{totalRows}</span>
+                <strong>地址记录</strong>
+              </div>
+              <div className="overview-stat">
+                <span>{rawRows.length}</span>
+                <strong>待解析</strong>
+              </div>
+            </div>
+          </section>
+        )}
         {viewMode === 'map' ? (
           <MapView searchQuery={searchTerm} searchMode={searchMode} themeMode={themeMode} />
         ) : searchTerm ? (
@@ -312,21 +335,21 @@ export default function Page() {
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#2563eb',
-          colorBgBase: isDark ? '#0f172a' : '#f7f8fb',
-          colorBgContainer: isDark ? '#182033' : '#ffffff',
-          colorBgElevated: isDark ? '#202a40' : '#ffffff',
-          colorBorder: isDark ? 'rgba(148,163,184,0.22)' : '#d9e0ea',
-          borderRadius: 8,
-          fontFamily: "'Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif",
-          colorText: isDark ? '#e5e7eb' : '#111827',
-          colorTextSecondary: isDark ? '#a7b0c0' : '#4b5563',
-          colorTextTertiary: isDark ? '#717b8f' : '#7b8794',
+          colorPrimary: isDark ? '#7ca7ff' : '#1f5eff',
+          colorBgBase: isDark ? '#0c1220' : '#f5f7fb',
+          colorBgContainer: isDark ? '#111a2b' : '#ffffff',
+          colorBgElevated: isDark ? '#162238' : '#ffffff',
+          colorBorder: isDark ? 'rgba(148,163,184,0.22)' : '#d8e0ec',
+          borderRadius: 12,
+          fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif",
+          colorText: isDark ? '#eef3ff' : '#111827',
+          colorTextSecondary: isDark ? '#b5c0d4' : '#526071',
+          colorTextTertiary: isDark ? '#7d8aa2' : '#7a8798',
         },
         components: {
-          Button: { borderRadius: 8 },
-          Input: { borderRadius: 8 },
-          Modal: { borderRadiusLG: 10 },
+          Button: { borderRadius: 12 },
+          Input: { borderRadius: 12 },
+          Modal: { borderRadiusLG: 14 },
           Drawer: { borderRadiusLG: 0 },
         }
       }}
