@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import { Empty, List, Space, Spin, Tag, Typography } from 'antd'
-import { PhoneOutlined, ShopOutlined, UserOutlined } from '@ant-design/icons'
+import { ShopOutlined, UserOutlined } from '@ant-design/icons'
 import { renderHighlight } from '@/utils/fuzzy'
 import CopyableAddress from './CopyableAddress'
 
@@ -83,9 +83,6 @@ export default function SearchResults({ query, rows, loading }) {
               </MetaTag>
               <MetaTag color="red">
                 {item.source && <Highlight value={item.source} query={query} />}
-              </MetaTag>
-              <MetaTag icon={<PhoneOutlined />} color="default">
-                {item.phone && <Highlight value={item.phone} query={query} />}
               </MetaTag>
             </Space>
           </List.Item>

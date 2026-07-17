@@ -147,7 +147,6 @@ export default function CityDetail({ city, province, open, onClose }) {
                   {item.industry && <MetaTag color="var(--color-accent)" bg="color-mix(in srgb,var(--color-accent) 10%,transparent)" border="color-mix(in srgb,var(--color-accent) 20%,var(--color-border))">{item.industry}</MetaTag>}
                   {item.source   && <MetaTag color="var(--text-secondary)" bg="var(--color-surface)" border="var(--color-border)">{item.source}</MetaTag>}
                   {item.status   && <MetaTag color="#059669" bg="color-mix(in srgb,#10b981 10%,transparent)" border="color-mix(in srgb,#10b981 22%,var(--color-border))">{item.status}</MetaTag>}
-                  {item.phone    && <MetaTag color="var(--text-muted)" bg="transparent" border="var(--color-border)">{item.phone}</MetaTag>}
                 </Space>
               </List.Item>
             )}

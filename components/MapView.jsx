@@ -255,7 +255,6 @@ function markerInfoContent(point = {}) {
     ['区域', fullRegion(point)],
     ['地址', point.address],
     ['公司', point.company],
-    ['电话', point.phone],
     ['状态', point.status],
     ['来源', isManualLocation(point) ? '手动打点' : point.geocode_status || '自动/导入'],
   ].filter(([, value]) => value)
