@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query, initDB } from '@/lib/db'
+import { getAppUser } from '@/lib/auth'
 
 function parseId(value) {
   const id = Number(value)
@@ -16,6 +17,7 @@ function parseCoordinate(value, label, min, max) {
 }
 
 export async function POST(request) {
+  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
     await initDB()
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query, initDB } from '@/lib/db'
+import { getAppUser } from '@/lib/auth'
 import { geocodeAddress, getAmapWebServiceKey } from '@/lib/amap'
 
 const RETRYABLE_LIMIT_ERRORS = new Set([
@@ -51,6 +52,7 @@ function retryableFilter(retryFailed) {
 }
 
 export async function POST(request) {
+  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
     await initDB()
 
@@ -59,7 +61,7 @@ export async function POST(request) {
     const delayMs = clampDelay(body.delayMs)
     const retryFailed = body.retryFailed === true
 
-    if (!getAmapWebServiceKey()) {
+    if (!await getAmapWebServiceKey()) {
       return NextResponse.json({ ok: false, error: '缺少 AMAP_WEB_SERVICE_KEY' }, { status: 400 })
     }
 

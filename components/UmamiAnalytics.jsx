@@ -1,42 +1,43 @@
-import Script from 'next/script'
+'use client'
+import { useEffect } from 'react'
 
-const DEFAULT_SCRIPT_URL = 'https://cloud.umami.is/script.js'
-
-function cleanEnv(value) {
-  const text = String(value || '').trim()
-  return text || undefined
-}
-
-function cleanBooleanEnv(value) {
-  const text = cleanEnv(value)
-  if (!text) return undefined
-
-  const normalized = text.toLowerCase()
-  if (['1', 'true', 'yes', 'on'].includes(normalized)) return 'true'
-  if (['0', 'false', 'no', 'off'].includes(normalized)) return 'false'
-  return undefined
+function setDataAttribute(script, name, value) {
+  if (value === undefined || value === null || value === '') return
+  script.setAttribute(`data-${name}`, String(value))
 }
 
 export default function UmamiAnalytics() {
-  const websiteId = cleanEnv(process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID)
+  useEffect(() => {
+    let cancelled = false
 
-  if (!websiteId) return null
+    async function load() {
+      try {
+        const response = await fetch('/api/public-config', { cache: 'no-store' })
+        const data = await response.json()
+        const config = data?.umami
+        if (cancelled || !config?.websiteId || document.getElementById('umami-analytics')) return
 
-  const scriptUrl = cleanEnv(process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL) || DEFAULT_SCRIPT_URL
+        const script = document.createElement('script')
+        script.id = 'umami-analytics'
+        script.async = true
+        script.src = config.scriptUrl || 'https://cloud.umami.is/script.js'
+        setDataAttribute(script, 'website-id', config.websiteId)
+        setDataAttribute(script, 'host-url', config.hostUrl)
+        setDataAttribute(script, 'domains', config.domains)
+        setDataAttribute(script, 'tag', config.tag)
+        setDataAttribute(script, 'auto-track', config.autoTrack)
+        setDataAttribute(script, 'do-not-track', config.doNotTrack)
+        setDataAttribute(script, 'exclude-search', config.excludeSearch)
+        setDataAttribute(script, 'exclude-hash', config.excludeHash)
+        document.head.appendChild(script)
+      } catch {
+        // Analytics must never interrupt the application.
+      }
+    }
 
-  return (
-    <Script
-      id="umami-analytics"
-      src={scriptUrl}
-      strategy="afterInteractive"
-      data-website-id={websiteId}
-      data-host-url={cleanEnv(process.env.NEXT_PUBLIC_UMAMI_HOST_URL)}
-      data-domains={cleanEnv(process.env.NEXT_PUBLIC_UMAMI_DOMAINS)}
-      data-tag={cleanEnv(process.env.NEXT_PUBLIC_UMAMI_TAG)}
-      data-auto-track={cleanBooleanEnv(process.env.NEXT_PUBLIC_UMAMI_AUTO_TRACK)}
-      data-do-not-track={cleanBooleanEnv(process.env.NEXT_PUBLIC_UMAMI_DO_NOT_TRACK)}
-      data-exclude-search={cleanBooleanEnv(process.env.NEXT_PUBLIC_UMAMI_EXCLUDE_SEARCH)}
-      data-exclude-hash={cleanBooleanEnv(process.env.NEXT_PUBLIC_UMAMI_EXCLUDE_HASH)}
-    />
-  )
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  return null
 }

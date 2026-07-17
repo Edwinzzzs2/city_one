@@ -1,15 +1,13 @@
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { ConfigProvider, theme, Button, Input, Badge, Tooltip, Space, App, Segmented } from 'antd'
+import { ConfigProvider, theme, Button, Input, Tooltip, Space, App, Segmented } from 'antd'
 import {
-  UploadOutlined, RobotOutlined, SettingOutlined, SearchOutlined, DatabaseOutlined,
-  MoonOutlined, SunOutlined, UnorderedListOutlined, EnvironmentOutlined,
+  SearchOutlined, DatabaseOutlined, MoonOutlined, SunOutlined,
+  UnorderedListOutlined, EnvironmentOutlined, LogoutOutlined,
+  CrownOutlined, UserOutlined,
 } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
-import { parseExcelFile } from '@/utils/excelParser'
 import CityGrid from '@/components/CityGrid'
-import AiParseModal from '@/components/AiParseModal'
-import SettingsModal from '@/components/SettingsModal'
 import SearchResults from '@/components/SearchResults'
 import MapView from '@/components/MapView'
 import { readableEventName, trackEvent } from '@/utils/analytics'
@@ -18,22 +16,17 @@ const PULL_REFRESH_TRIGGER = 68
 const PULL_REFRESH_MAX = 96
 const PULL_REFRESH_IGNORED_SELECTOR = '.ant-modal-root,.ant-drawer,.ant-select-dropdown,.map-stage,.map-search-panel,.amap-container'
 
-function MainApp({ themeMode, onToggleTheme }) {
+function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
   const { message } = App.useApp()
-  const { rawRows, setRawRows } = useDataStore()
 
   const [searchQ, setSearchQ] = useState('')
   const [searchMode, setSearchMode] = useState('city')
   const [viewMode, setViewMode] = useState('list')
-  const [aiOpen, setAiOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [importing, setImporting] = useState(false)
   const [stats, setStats] = useState([])
   const [statsLoading, setStatsLoading] = useState(true)
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [pullRefresh, setPullRefresh] = useState({ distance: 0, refreshing: false })
-  const fileRef = useRef()
   const shellRef = useRef(null)
   const pullStartY = useRef(0)
   const pullTracking = useRef(false)
@@ -110,32 +103,6 @@ function MainApp({ themeMode, onToggleTheme }) {
       controller.abort()
     }
   }, [fetchSearchResults, searchTerm, searchMode])
-
-  // 导入文件
-  const handleFile = useCallback(async (file) => {
-    setImporting(true)
-    try {
-      const raw = await parseExcelFile(file)
-      if (raw.length === 0) { message.error('未识别到有效数据，请检查表格格式'); return }
-      setRawRows(raw)
-      trackEvent(readableEventName('读取导入文件', `${raw.length} 条`), {
-        event_type: 'file_import_read',
-        row_count: raw.length,
-        file_type: file.name?.split('.').pop()?.toLowerCase(),
-      })
-      message.success(`已读取 ${raw.length} 条，请点击「AI 解析」`)
-      setAiOpen(true)
-    } catch (e) {
-      trackEvent(readableEventName('导入文件失败', file.name), {
-        event_type: 'file_import_error',
-        file_type: file.name?.split('.').pop()?.toLowerCase(),
-      })
-      message.error('文件解析失败：' + e.message)
-    } finally {
-      setImporting(false)
-      if (fileRef.current) fileRef.current.value = ''
-    }
-  }, [setRawRows, message])
 
   const refreshPageData = useCallback(async () => {
     setPullRefresh({ distance: 58, refreshing: true })
@@ -268,74 +235,26 @@ function MainApp({ themeMode, onToggleTheme }) {
               ]}
             />
 
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-
-            <Tooltip title="导入 Excel / CSV">
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                loading={importing}
-                onClick={() => {
-                  trackEvent(readableEventName('点击', '导入文件'), {
-                    event_type: 'operation_click',
-                    operation: 'file_import_open',
-                  })
-                  fileRef.current?.click()
-                }}
-                style={{ height: 36 }}
-              >
-                <span className="action-label">导入</span>
-              </Button>
-            </Tooltip>
-
-            {rawRows.length > 0 && (
-              <Tooltip title={`${rawRows.length} 条待 AI 解析`}>
-                <Badge count={rawRows.length} size="small">
-                  <Button
-                    icon={<RobotOutlined />}
-                    onClick={() => {
-                      trackEvent(readableEventName('点击', 'AI 解析'), {
-                        event_type: 'operation_click',
-                        operation: 'ai_parse_open',
-                        row_count: rawRows.length,
-                      })
-                      setAiOpen(true)
-                    }}
-                    style={{ height: 36, borderColor: 'color-mix(in srgb,var(--color-primary) 42%,var(--color-border))', color: 'var(--color-primary-light)', background: 'color-mix(in srgb,var(--color-primary) 10%,var(--color-surface))' }}>
-                    <span className="action-label">AI 解析</span>
-                  </Button>
-                </Badge>
-              </Tooltip>
-            )}
-
             <Tooltip title={themeMode === 'dark' ? '切换浅色模式' : '切换深色模式'}>
               <Button
                 icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-                onClick={() => {
-                  trackEvent(readableEventName('点击', themeMode === 'dark' ? '切换浅色' : '切换深色'), {
-                    event_type: 'operation_click',
-                    operation: 'theme_toggle',
-                    target_theme: themeMode === 'dark' ? 'light' : 'dark',
-                  })
-                  onToggleTheme()
-                }}
+                onClick={() => onToggleTheme()}
                 style={{ height: 36 }}
               />
             </Tooltip>
 
-            <Tooltip title="AI 配置">
-              <Button
-                icon={<SettingOutlined />}
-                onClick={() => {
-                  trackEvent(readableEventName('点击', 'AI 配置'), {
-                    event_type: 'operation_click',
-                    operation: 'settings_open',
-                  })
-                  setSettingsOpen(true)
-                }}
-                style={{ height: 36 }}
-              />
-            </Tooltip>
+            {authEnabled && !user?.isGuest && (
+              <>
+                <div className="account-chip" title={user?.isAdmin ? '管理员账号' : '普通账号'}>
+                  {user?.isAdmin ? <CrownOutlined /> : <UserOutlined />}
+                  <span>{user?.username}</span>
+                </div>
+
+                <Tooltip title="退出登录">
+                  <Button icon={<LogoutOutlined />} onClick={onLogout} style={{ height: 36 }} />
+                </Tooltip>
+              </>
+            )}
           </Space>
         </div>
       </header>
@@ -347,9 +266,9 @@ function MainApp({ themeMode, onToggleTheme }) {
             <div className="overview-copy">
               <span className="overview-kicker">Address Ledger</span>
               <h1>校区地址台账</h1>
-              <p>按城市管理校区地址、联系人与坐标状态，导入后的数据可直接进入地图校验和坐标补齐。</p>
+              <p>按城市查看校区地址、联系人与坐标状态，管理员可在控制台集中导入和维护数据。</p>
             </div>
-            <div className="overview-stats" aria-label="当前数据统计">
+            <div className="overview-stats overview-stats--compact" aria-label="当前数据统计">
               <div className="overview-stat">
                 <span>{totalCities}</span>
                 <strong>覆盖城市</strong>
@@ -357,10 +276,6 @@ function MainApp({ themeMode, onToggleTheme }) {
               <div className="overview-stat">
                 <span>{totalRows}</span>
                 <strong>地址记录</strong>
-              </div>
-              <div className="overview-stat">
-                <span>{rawRows.length}</span>
-                <strong>待解析</strong>
               </div>
             </div>
           </section>
@@ -374,8 +289,6 @@ function MainApp({ themeMode, onToggleTheme }) {
         )}
       </main>
 
-      <AiParseModal open={aiOpen} onClose={() => setAiOpen(false)} onImported={loadStats} />
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
@@ -383,10 +296,42 @@ function MainApp({ themeMode, onToggleTheme }) {
 export default function Page() {
   const { settings, initSettings, updateLocalSettings } = useDataStore()
   const themeMode = settings.themeMode || 'light'
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authEnabled, setAuthEnabled] = useState(false)
 
   useEffect(() => {
     initSettings()
   }, [initSettings])
+
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const configResponse = await fetch('/api/public-config', { cache: 'no-store' })
+        const config = await configResponse.json()
+        const authEnabled = config?.authEnabled === true
+        setAuthEnabled(authEnabled)
+        const response = await fetch('/api/auth/me', { cache: 'no-store' })
+        const data = await response.json().catch(() => ({}))
+
+        if (response.ok && data.authenticated) {
+          setUser(data.user)
+          return
+        }
+        if (!authEnabled) {
+          setUser({ username: 'guest', isAdmin: false, isGuest: true })
+          return
+        }
+        window.location.href = '/login'
+      } catch {
+        window.location.href = '/login'
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    loadUser()
+  }, [])
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode
@@ -394,6 +339,15 @@ export default function Page() {
   }, [themeMode])
 
   const isDark = themeMode === 'dark'
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  }
+
+  if (authLoading || !user) {
+    return <div className="auth-loading"><span /><p>正在进入地址台账</p></div>
+  }
 
   return (
     <ConfigProvider
@@ -423,6 +377,9 @@ export default function Page() {
         <MainApp
           themeMode={themeMode}
           onToggleTheme={() => updateLocalSettings({ themeMode: themeMode === 'dark' ? 'light' : 'dark' })}
+          user={user}
+          onLogout={logout}
+          authEnabled={authEnabled}
         />
       </App>
     </ConfigProvider>

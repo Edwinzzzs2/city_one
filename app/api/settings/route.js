@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAISettings, setSetting } from '@/lib/db'
+import { getAdminUser, getAppUser } from '@/lib/auth'
 
 const MASKED_KEY = '********'
 
@@ -14,11 +15,15 @@ function publicSettings(settings) {
     themeMode: settings.themeMode,
     protectionRadiusKm: settings.protectionRadiusKm,
     showProtection: settings.showProtection,
+    amapJsKey: settings.amapJsKey,
+    amapSecurityCode: settings.amapSecurityCode,
   }
 }
 
 export async function GET() {
   try {
+    const user = await getAppUser()
+    if (!user) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
     const settings = await getAISettings()
     return NextResponse.json({ ok: true, settings: publicSettings(settings) })
   } catch (e) {
@@ -29,6 +34,8 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const admin = await getAdminUser()
+    if (!admin) return NextResponse.json({ ok: false, error: '需要管理员权限' }, { status: 403 })
     const body = await request.json()
     const current = await getAISettings()
 
@@ -60,6 +67,8 @@ export async function POST(request) {
         themeMode: current.themeMode,
         protectionRadiusKm: current.protectionRadiusKm,
         showProtection: current.showProtection,
+        amapJsKey: current.amapJsKey,
+        amapSecurityCode: current.amapSecurityCode,
       }),
     })
   } catch (e) {

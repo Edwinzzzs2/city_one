@@ -26,6 +26,31 @@
   --font-display: 'Songti SC','Noto Serif SC','STSong',serif;
 }
 
+.account-chip{
+  height:36px;
+  max-width:150px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 10px;
+  border:1px solid var(--color-border);
+  background:color-mix(in srgb,var(--color-surface) 82%,transparent);
+  color:var(--text-secondary);
+  font-size:12px;
+}
+.account-chip>span:first-child{color:var(--color-accent)}
+.account-chip span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.auth-loading{
+  width:100%;height:100dvh;display:grid;place-content:center;justify-items:center;gap:13px;
+  background:var(--page-bg);color:var(--text-muted);font-size:12px;
+}
+.auth-loading span{
+  width:30px;height:30px;border:2px solid var(--color-border);border-top-color:var(--color-primary);
+  border-radius:50%;animation:auth-spin .8s linear infinite;
+}
+@keyframes auth-spin{to{transform:rotate(360deg)}}
+@media(max-width:720px){.account-chip{display:none}}
+
 :root[data-theme='dark'] {
   --color-bg: #101714;
   --color-bg2: #141c18;
@@ -570,6 +595,9 @@ body.is-scroll-locked .app-shell{
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:8px;
   align-content:end;
+}
+.overview-stats.overview-stats--compact{
+  grid-template-columns:repeat(2,minmax(0,1fr));
 }
 .overview-stat{
   min-width:0;
@@ -1910,9 +1938,6 @@ button.map-stat-card:focus-visible,
     width:32px;
     height:32px;
     border-radius:8px;
-  }
-  .brand-meta{
-    display:none;
   }
   .header-actions{
     gap:3px!important;

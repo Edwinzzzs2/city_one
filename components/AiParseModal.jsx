@@ -60,7 +60,7 @@ export default function AiParseModal({ open, onClose, onImported }) {
 
   const handleStart = async () => {
     if (!settings.apiBaseUrl || (!settings.apiKey && !settings.hasApiKey)) {
-      setError('请先在右上角「设置」填写 API 地址和密钥')
+      setError('请先在控制台「系统配置」中填写 API 地址和密钥')
       return
     }
     setError(''); setStep(1)

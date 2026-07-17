@@ -9,6 +9,8 @@ const defaultSettings = {
   themeMode: 'light',
   protectionRadiusKm: 3,
   showProtection: true,
+  amapJsKey: '',
+  amapSecurityCode: '',
 }
 
 const LOCAL_PREFERENCE_KEYS = {

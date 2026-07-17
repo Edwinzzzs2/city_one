@@ -307,8 +307,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const [geocoding, setGeocoding] = useState(false)
   const [geocodeProgress, setGeocodeProgress] = useState(null)
 
-  const amapKey = process.env.NEXT_PUBLIC_AMAP_JS_KEY || ''
-  const amapSecurityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_CODE || ''
+  const amapKey = settings.amapJsKey || ''
+  const amapSecurityCode = settings.amapSecurityCode || ''
   const protectionRadiusMeters = protectionRadiusKm * 1000
   const activeCheckPoint = manualPoint || newPoint
   const isManualDraft = Boolean(manualPoint && selectedPoint)

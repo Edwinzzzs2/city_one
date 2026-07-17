@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query, initDB } from '@/lib/db'
+import { getAppUser } from '@/lib/auth'
 
 const MAP_LIMIT = 20000
 const LIST_LIMIT = 1000
@@ -109,6 +110,7 @@ async function getMapRows({ q, city, listMode = 'located' }) {
 
 // GET /api/addresses
 export async function GET(request) {
+  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
     await initDB()
 
@@ -170,6 +172,7 @@ export async function GET(request) {
 
 // POST /api/addresses
 export async function POST(request) {
+  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
     await initDB()
 
@@ -228,6 +231,7 @@ export async function POST(request) {
 
 // DELETE /api/addresses
 export async function DELETE() {
+  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
     await initDB()
     await query('TRUNCATE TABLE city_addresses RESTART IDENTITY')

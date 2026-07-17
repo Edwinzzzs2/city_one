@@ -1,0 +1,258 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, .82fr) minmax(420px, 1.18fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.importCard,
+.sidePanel {
+  min-height: 520px;
+  border: 1px solid #d7ded5;
+  background: #f8faf6;
+}
+
+.importCard {
+  position: relative;
+  padding: clamp(34px, 5vw, 64px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.importCard::before {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -150px;
+  top: -150px;
+  border: 1px solid rgba(15, 111, 98, .12);
+  border-radius: 50%;
+  box-shadow: 0 0 0 38px rgba(15, 111, 98, .025), 0 0 0 78px rgba(15, 111, 98, .018);
+}
+
+.importCard::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 88px;
+  height: 5px;
+  background: #c36c4a;
+}
+
+.importMark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  background: #dce9df;
+  color: #0f6f62;
+  font-size: 25px;
+  margin-bottom: 28px;
+}
+
+.kicker,
+.flowHead span {
+  color: #8c5c49;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .2em;
+}
+
+.importCard h2 {
+  margin-top: 8px;
+  font: 700 28px 'Songti SC', 'Noto Serif SC', serif;
+  letter-spacing: -.025em;
+}
+
+.importCard p {
+  max-width: 460px;
+  margin-top: 13px;
+  color: #69766e;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.importCard > button {
+  min-height: 46px;
+  margin-top: 32px;
+  padding: 0 20px;
+  border: 0;
+  background: #0f6f62;
+  color: #fff;
+  font: 700 12px 'Noto Sans SC', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgba(15, 111, 98, .18);
+}
+
+.importCard > button:disabled {
+  opacity: .58;
+  cursor: wait;
+}
+
+.importCard small {
+  margin-top: 10px;
+  color: #919a94;
+  font-size: 9px;
+}
+
+.sidePanel {
+  padding: clamp(28px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.flowHead {
+  padding-bottom: 22px;
+  border-bottom: 1px solid #dfe5de;
+}
+
+.flowHead h3 {
+  margin-top: 6px;
+  font: 700 21px 'Songti SC', 'Noto Serif SC', serif;
+}
+
+.steps {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 16px;
+  align-items: center;
+  min-height: 82px;
+  border-bottom: 1px solid #e2e7e1;
+}
+
+.steps b {
+  color: #b06b4f;
+  font: 700 13px 'Songti SC', serif;
+}
+
+.steps div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.steps strong {
+  font-size: 12px;
+}
+
+.steps span {
+  color: #808b84;
+  font-size: 10px;
+}
+
+.ready,
+.emptyState {
+  min-height: 76px;
+  margin-top: auto;
+  padding: 16px 18px;
+  border: 1px solid #cfddd3;
+  background: #edf4ef;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.ready > span,
+.emptyState > span:first-child {
+  color: #0f6f62;
+  font-size: 20px;
+}
+
+.ready div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ready strong {
+  font-size: 11px;
+}
+
+.ready div span,
+.emptyState span:last-child {
+  color: #78857d;
+  font-size: 9px;
+}
+
+.ready button {
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #0f6f62;
+  background: transparent;
+  color: #0f6f62;
+  font: 700 10px 'Noto Sans SC', sans-serif;
+  cursor: pointer;
+}
+
+.emptyState {
+  justify-content: center;
+  background: #f2f5f1;
+  border-style: dashed;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .importCard,
+  .sidePanel {
+    min-height: 0;
+  }
+
+  .importCard {
+    padding: 34px 26px;
+  }
+
+  .sidePanel {
+    padding: 28px 24px;
+  }
+
+  .ready,
+  .emptyState {
+    margin-top: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .importCard {
+    padding: 28px 20px;
+  }
+
+  .importCard h2 {
+    font-size: 24px;
+  }
+
+  .importCard > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sidePanel {
+    padding: 24px 18px;
+  }
+
+  .ready {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ready button {
+    width: 100%;
+  }
+}
