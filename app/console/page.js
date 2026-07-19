@@ -184,7 +184,7 @@ function ConsolePageContent() {
         </nav>
         <div className={styles.operator}><div><UserOutlined /></div><span><small>当前管理员</small><strong>{viewer?.username}</strong></span></div>
         <a className={styles.back} href="/"><ArrowLeftOutlined /> 返回地址台账</a>
-        <button type="button" className={styles.logout} onClick={logout}><LogoutOutlined /><span>退出登录</span></button>
+        <button type="button" className={styles.logout} onClick={logout} aria-label="退出登录" title="退出登录"><LogoutOutlined /><span>退出</span></button>
       </aside>
 
       <main className={styles.main}>
