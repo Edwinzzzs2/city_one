@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAISettings } from '@/lib/db'
-import { getAppUser } from '@/lib/auth'
+import { getAdminUser, getAppUser } from '@/lib/auth'
 
 const AI_REQUEST_TIMEOUT_MS = 120_000
 
@@ -107,6 +107,7 @@ async function callAI(url, apiKey, model, messages) {
 }
 
 export async function POST(request) {
+  if (!await getAdminUser()) return NextResponse.json({ ok: false, error: '需要管理员权限' }, { status: 403 })
   if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
     const body = await request.json()

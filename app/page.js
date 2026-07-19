@@ -179,7 +179,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
           {/* Logo */}
           <div className="brand-block">
             <div className="brand-icon">
-              <img src="/icon-192.png" alt="" aria-hidden="true" />
+              <img src="/icon.svg" alt="" aria-hidden="true" />
             </div>
             <div>
               <div className="brand-title">
@@ -281,7 +281,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
           </section>
         )}
         {viewMode === 'map' ? (
-          <MapView searchQuery={searchTerm} searchMode={searchMode} themeMode={themeMode} />
+          <MapView searchQuery={searchTerm} searchMode={searchMode} themeMode={themeMode} isAdmin={Boolean(user?.isAdmin)} />
         ) : searchTerm ? (
           <SearchResults query={searchTerm} rows={searchResults} loading={searchLoading} />
         ) : (

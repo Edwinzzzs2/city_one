@@ -275,7 +275,7 @@ function markerInfoContent(point = {}) {
   `
 }
 
-export default function MapView({ searchQuery = '', searchMode = 'city', themeMode = 'light' }) {
+export default function MapView({ searchQuery = '', searchMode = 'city', themeMode = 'light', isAdmin = false }) {
   const { message } = App.useApp()
   const { settings, updateLocalSettings } = useDataStore()
   const mapNodeRef = useRef(null)
@@ -327,6 +327,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   }, [settings.showProtection])
 
   const handleProtectionRadiusChange = useCallback((value) => {
+    if (!isAdmin) return
     setProtectionRadiusKm(value)
     updateLocalSettings({ protectionRadiusKm: value })
     trackEvent(readableEventName('调整保护半径', `${value} 公里`), {
@@ -334,9 +335,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       preference: 'protection_radius_km',
       value,
     })
-  }, [updateLocalSettings])
+  }, [isAdmin, updateLocalSettings])
 
   const handleShowProtectionChange = useCallback((event) => {
+    if (!isAdmin) return
     const checked = event.target.checked
     setShowProtection(checked)
     updateLocalSettings({ showProtection: checked })
@@ -345,7 +347,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       preference: 'show_protection',
       value: checked,
     })
-  }, [updateLocalSettings])
+  }, [isAdmin, updateLocalSettings])
 
   useEffect(() => {
     const query = listFilterText.trim()
@@ -365,6 +367,15 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
   const selectPoint = useCallback((row, { keepDraft = false } = {}) => {
     const point = normalizePoint(row)
+    if (!isAdmin) {
+      setSelectedPoint(null)
+      setManualPoint(null)
+      setNewPoint(null)
+      setMapSearchResults([])
+      const map = mapRef.current
+      if (map && hasLocation(point)) map.panTo([point.lng, point.lat])
+      return
+    }
     setSelectedPoint(point)
     if (!keepDraft) setManualPoint(null)
     setNewPoint(null)
@@ -374,7 +385,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (map && hasLocation(point)) {
       map.panTo([point.lng, point.lat])
     }
-  }, [])
+  }, [isAdmin])
 
   const loadPoints = useCallback(async () => {
     setPointsLoading(true)
@@ -713,6 +724,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   }, [loadPoints, message])
 
   const handleAutoLocateRow = useCallback(async (row) => {
+    if (!isAdmin) return
     if (!canAutoLocate(row)) {
       message.warning('这条记录缺少可定位的地址信息')
       return
@@ -751,7 +763,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     } finally {
       setAutoGeocodingId(null)
     }
-  }, [message, saveLocation])
+  }, [isAdmin, message, saveLocation])
 
   const useMapSearchPoi = useCallback((poi) => {
     const searchLabel = poi.name || [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join('')
@@ -883,6 +895,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   }, [handleMapSearch, selectedPoint])
 
   const handleGeocodeMissing = useCallback(async () => {
+    if (!isAdmin) return
     setGeocoding(true)
     setGeocodeProgress({ updated: 0, failed: 0, remaining: summary.missing })
 
@@ -933,7 +946,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     } finally {
       setGeocoding(false)
     }
-  }, [loadPoints, message, summary.missing])
+  }, [isAdmin, loadPoints, message, summary.missing])
 
   return (
     <section className="map-view">
@@ -1028,7 +1041,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                 handleGeocodeMissing()
               }}
               loading={geocoding}
-              disabled={summary.missing === 0}
+              disabled={!isAdmin || summary.missing === 0}
             >
               补齐坐标
             </Button>
@@ -1043,7 +1056,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         <div className="map-side-section map-list-section">
           <div className="map-list-head">
             <span>{listMode === 'missing' ? '待补坐标' : listMode === 'manual' ? '手动打点' : '已落点'}</span>
-            <Checkbox checked={showProtection} onChange={handleShowProtectionChange}>
+            <Checkbox checked={showProtection} onChange={handleShowProtectionChange} disabled={!isAdmin}>
               {protectionRadiusKm}公里圈
             </Checkbox>
           </div>
@@ -1099,7 +1112,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                           size="small"
                           icon={<SyncOutlined />}
                           loading={autoGeocodingId === point.id || savingId === point.id}
-                          disabled={!canAutoLocate(point)}
+                          disabled={!isAdmin || !canAutoLocate(point)}
                           onClick={() => {
                             trackEvent(readableEventName('点击', hasLocation(point) ? '重定位' : '自动定位'), {
                               event_type: 'operation_click',
@@ -1115,6 +1128,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                           size="small"
                           icon={<AimOutlined />}
                           type={selectedPoint?.id === point.id ? 'primary' : 'default'}
+                          disabled={!isAdmin}
                           onClick={() => {
                             selectPoint(point)
                             const keyword = searchTextForRow(point)
@@ -1149,7 +1163,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       <div className="map-stage">
         <div ref={mapNodeRef} className="map-canvas" />
         <MapSearchPanel
-          selectedPoint={selectedPoint}
+          selectedPoint={isAdmin ? selectedPoint : null}
           searchText={mapSearchText}
           loading={mapSearchLoading}
           results={mapSearchResults}
@@ -1181,6 +1195,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               size="small"
               value={protectionRadiusKm}
               onChange={handleProtectionRadiusChange}
+              disabled={!isAdmin}
               popupMatchSelectWidth={false}
               options={PROTECTION_RADIUS_OPTIONS.map(value => ({
                 value,
@@ -1189,7 +1204,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             />
           </div>
         </Tooltip>
-        {selectedPoint && (
+        {isAdmin && selectedPoint && (
           <div className="map-save-bar">
             <div className="map-save-info">
               <div className="map-save-title">
