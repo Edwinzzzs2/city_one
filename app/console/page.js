@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { App as AntdApp } from 'antd'
 import {
-  ArrowLeftOutlined, CheckCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined,
+  ArrowLeftOutlined, CheckCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined, LogoutOutlined,
   DatabaseOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined, LockOutlined, PlusOutlined, ReloadOutlined,
   RobotOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, UploadOutlined, UserOutlined,
 } from '@ant-design/icons'
@@ -165,6 +165,11 @@ function ConsolePageContent() {
     setSettings(current => ({ ...current, [key]: value }))
   }
 
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login?next=/console'
+  }
+
   if (loading) return <div className={styles.loading}><span /><p>正在验证管理权限</p></div>
 
   return (
@@ -179,6 +184,7 @@ function ConsolePageContent() {
         </nav>
         <div className={styles.operator}><div><UserOutlined /></div><span><small>当前管理员</small><strong>{viewer?.username}</strong></span></div>
         <a className={styles.back} href="/"><ArrowLeftOutlined /> 返回地址台账</a>
+        <button type="button" className={styles.logout} onClick={logout}><LogoutOutlined /><span>退出登录</span></button>
       </aside>
 
       <main className={styles.main}>
