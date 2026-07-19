@@ -7,7 +7,7 @@ export async function GET() {
   if (!admin) return NextResponse.json({ ok: false, error: '需要管理员权限' }, { status: 403 })
 
   const result = await query(`
-    SELECT id, username, is_admin, is_active, last_login_at, created_at
+    SELECT id, username, password_plain, is_admin, is_active, last_login_at, created_at
     FROM app_users
     ORDER BY is_admin DESC, created_at ASC
   `)

@@ -43,10 +43,10 @@ export async function POST(request) {
       }
 
       const inserted = await client.query(
-        `INSERT INTO app_users (username, password_hash, is_admin)
-         VALUES ($1, $2, $3)
+        `INSERT INTO app_users (username, password_hash, password_plain, is_admin)
+         VALUES ($1, $2, $3, $4)
          RETURNING id, username, is_admin`,
-        [username, passwordHash, entry.grant_admin],
+        [username, passwordHash, password, entry.grant_admin],
       )
       const created = inserted.rows[0]
       await client.query(

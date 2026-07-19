@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { App as AntdApp } from 'antd'
 import {
   ArrowLeftOutlined, CheckCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined,
-  DatabaseOutlined, FileExcelOutlined, KeyOutlined, LockOutlined, PlusOutlined, ReloadOutlined,
+  DatabaseOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined, LockOutlined, PlusOutlined, ReloadOutlined,
   RobotOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, UploadOutlined, UserOutlined,
 } from '@ant-design/icons'
 import AiParseModal from '@/components/AiParseModal'
@@ -55,6 +55,7 @@ function ConsolePageContent() {
   const [newPassword, setNewPassword] = useState('')
   const [importing, setImporting] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [visiblePasswords, setVisiblePasswords] = useState({})
   const fileRef = useRef(null)
 
   const stats = useMemo(() => ({
@@ -203,7 +204,16 @@ function ConsolePageContent() {
                 <span className={styles.date}>{formatDate(user.last_login_at)}</span>
                 <div className={styles.switchCell}><Toggle checked={user.is_admin} disabled={user.id === viewer?.id} onChange={value => updateUser(user, { isAdmin: value })} label="管理员权限" /><span>{user.is_admin ? '管理员' : '成员'}</span></div>
                 <div className={styles.switchCell}><Toggle checked={user.is_active} disabled={user.id === viewer?.id} onChange={value => updateUser(user, { isActive: value })} label="账号启用状态" /><span>{user.is_active ? '启用' : '停用'}</span></div>
-                <button className={styles.textButton} onClick={() => { setResetTarget(user); setNewPassword('') }}><KeyOutlined /> 重置密码</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                  <button className={styles.textButton} onClick={() => { setResetTarget(user); setNewPassword('') }}><KeyOutlined /> 重置密码</button>
+                  {user.password_plain ? (
+                    <button className={styles.textButton} onClick={() => setVisiblePasswords(prev => ({ ...prev, [user.id]: !prev[user.id] }))}>
+                      {visiblePasswords[user.id] ? <EyeInvisibleOutlined /> : <EyeOutlined />} {visiblePasswords[user.id] ? user.password_plain : '查看密码'}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: '10px', color: '#8b958f', paddingLeft: '4px' }}>无明文记录</span>
+                  )}
+                </div>
               </div>)}
             </div>
           </div>

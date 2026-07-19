@@ -16,8 +16,8 @@ export async function POST(request) {
     }
     const hash = await bcrypt.hash(password, 12)
     const result = await query(
-      'UPDATE app_users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING id',
-      [hash, targetId],
+      'UPDATE app_users SET password_hash = $1, password_plain = $2, updated_at = NOW() WHERE id = $3 RETURNING id',
+      [hash, password, targetId],
     )
     if (!result.rows.length) return NextResponse.json({ ok: false, error: '用户不存在' }, { status: 404 })
     return NextResponse.json({ ok: true })
