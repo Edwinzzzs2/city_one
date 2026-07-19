@@ -7,8 +7,8 @@ export const metadata = {
   description: '城市校区地址导入、检索与地图校验工具',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon-512.png',
-    apple: '/icon-192.png',
+    icon: '/icon.svg',
+    apple: '/icon.svg',
   },
   appleWebApp: {
     capable: true,
