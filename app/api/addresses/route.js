@@ -63,36 +63,38 @@ async function getMapRows({ q, city, listMode = 'located' }) {
     name, company, phone, lng, lat, geocode_status, geocode_level, geocode_address
   `
 
-  const [countResult, mapResult, listResult] = await Promise.all([
-    query(
-      `SELECT
-         COUNT(*)::int AS total,
-         CAST(COUNT(*) FILTER (WHERE lng IS NOT NULL AND lat IS NOT NULL) AS int) AS located,
-         CAST(COUNT(*) FILTER (WHERE lng IS NULL OR lat IS NULL) AS int) AS missing,
-         CAST(COUNT(*) FILTER (WHERE geocode_status = 'manual_map' OR geocode_status = 'manual') AS int) AS manual
-       FROM city_addresses
-       ${where}`,
-      params
-    ),
-    query(
-      `SELECT ${baseSelect}
-       FROM city_addresses
-       ${mapWhere}
-       ORDER BY province, city, district, id
-       LIMIT ${MAP_LIMIT}`,
-      params
-    ),
-    query(
-      `SELECT ${baseSelect}
-       FROM city_addresses
-       ${listWhere}
-       ORDER BY
-         CASE WHEN lng IS NULL OR lat IS NULL THEN 0 ELSE 1 END,
-         province, city, district, id
-       LIMIT ${LIST_LIMIT}`,
-      params
-    ),
-  ])
+  // Keep these queries sequential. The Supabase transaction pooler can
+  // terminate bursts of new connections from a local dev process or a
+  // serverless instance; the dataset is small enough that this is faster and
+  // more reliable than opening three connections at once.
+  const countResult = await query(
+    `SELECT
+       COUNT(*)::int AS total,
+       CAST(COUNT(*) FILTER (WHERE lng IS NOT NULL AND lat IS NOT NULL) AS int) AS located,
+       CAST(COUNT(*) FILTER (WHERE lng IS NULL OR lat IS NULL) AS int) AS missing,
+       CAST(COUNT(*) FILTER (WHERE geocode_status = 'manual_map' OR geocode_status = 'manual') AS int) AS manual
+     FROM city_addresses
+     ${where}`,
+    params
+  )
+  const mapResult = await query(
+    `SELECT ${baseSelect}
+     FROM city_addresses
+     ${mapWhere}
+     ORDER BY province, city, district, id
+     LIMIT ${MAP_LIMIT}`,
+    params
+  )
+  const listResult = await query(
+    `SELECT ${baseSelect}
+     FROM city_addresses
+     ${listWhere}
+     ORDER BY
+       CASE WHEN lng IS NULL OR lat IS NULL THEN 0 ELSE 1 END,
+       province, city, district, id
+     LIMIT ${LIST_LIMIT}`,
+    params
+  )
 
   return {
     mapRows: mapResult.rows,

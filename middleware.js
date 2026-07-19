@@ -6,6 +6,7 @@ const PUBLIC_API_PREFIXES = ['/api/auth/', '/api/public-config']
 
 function isAuthEnabled() {
   const value = String(process.env.AUTH_ENABLED || '').trim().toLowerCase()
+  if (!value) return process.env.NODE_ENV === 'production'
   return ['1', 'true', 'yes', 'on'].includes(value)
 }
 
