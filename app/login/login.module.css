@@ -490,3 +490,30 @@
     display: none;
   }
 }
+
+/* Compact touch-first login refinements */
+@media (max-width: 900px) {
+  .story { position: relative; z-index: 1; }
+  .panel { position: relative; z-index: 1; }
+  .card { border-radius: 14px; border-color: rgba(255,255,255,.2); }
+  .field, .submit { border-radius: 9px; }
+  .field { padding-inline: 15px; }
+  .eye { width: 42px; height: 42px; margin-right: -7px; }
+  .submit { padding-left: 20px; padding-right: 15px; }
+  .switcher { flex-wrap: wrap; row-gap: 2px; text-align: center; }
+}
+
+@media (max-width: 420px) {
+  .story { padding-inline: 16px; }
+  .eyebrow { font-size: 9px; letter-spacing: .14em; }
+  .panel { padding-inline: 10px; }
+  .card { padding: 24px 17px 20px; border-radius: 13px; }
+  .cardHead > span { font-size: 9px; }
+  .cardHead strong { font-size: 24px; }
+  .cardHead p { font-size: 12px; }
+  .form { gap: 14px; margin-top: 21px; }
+  .form label > span { font-size: 11px; margin-bottom: 7px; }
+  .field { height: 52px; }
+  .submit { min-height: 52px; }
+  .switcher { font-size: 12px; margin-top: 17px; padding-top: 15px; }
+}

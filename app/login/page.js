@@ -52,7 +52,7 @@ export default function LoginPage() {
       <div className={styles.grid} aria-hidden="true" />
       <section className={styles.story}>
         <span className={styles.eyebrow}>CITY ADDRESS LEDGER</span>
-        <div className={styles.mark}><img src="/icon-192.png" alt="" /></div>
+        <div className={styles.mark}><img src="/icon.svg" alt="" /></div>
         <h1>让每一处校区<br />都有准确坐标。</h1>
         <p>地址台账、地图校验与智能解析集中在一个安全的内部工作台。</p>
         <div className={styles.permissionNote}>

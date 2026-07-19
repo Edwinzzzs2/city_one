@@ -170,7 +170,7 @@ function ConsolePageContent() {
   return (
     <div className={styles.shell} style={{ height: '100dvh', overflow: 'auto', position: 'relative', zIndex: 1 }}>
       <aside className={styles.sidebar}>
-        <a className={styles.brand} href="/"><img src="/icon-192.png" alt="" /><div><strong>CITY ONE</strong><span>CONTROL DESK</span></div></a>
+        <a className={styles.brand} href="/"><img src="/icon.svg" alt="" /><div><strong>CITY ONE</strong><span>CONTROL DESK</span></div></a>
         <nav>
           <button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><TeamOutlined /><span>用户权限</span><i>{stats.users}</i></button>
           <button className={tab === 'whitelist' ? styles.active : ''} onClick={() => setTab('whitelist')}><SafetyCertificateOutlined /><span>注册白名单</span><i>{stats.pending}</i></button>
