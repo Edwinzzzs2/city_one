@@ -168,7 +168,7 @@ function ConsolePageContent() {
   if (loading) return <div className={styles.loading}><span /><p>正在验证管理权限</p></div>
 
   return (
-    <div className={styles.shell} style={{ height: '100dvh', overflow: 'auto', position: 'relative', zIndex: 1 }}>
+    <div className={styles.shell} style={{ position: 'relative', zIndex: 1 }}>
       <aside className={styles.sidebar}>
         <a className={styles.brand} href="/"><img src="/icon.svg" alt="" /><div><strong>CITY ONE</strong><span>CONTROL DESK</span></div></a>
         <nav>
