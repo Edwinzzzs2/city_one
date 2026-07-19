@@ -67,3 +67,4 @@ export async function DELETE(request) {
   }
   return NextResponse.json({ ok: true })
 }
+export const dynamic = 'force-dynamic'

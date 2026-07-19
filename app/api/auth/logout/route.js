@@ -5,4 +5,5 @@ export async function POST() {
   await clearAuthCookie()
   return NextResponse.json({ ok: true })
 }
+export const dynamic = 'force-dynamic'
 

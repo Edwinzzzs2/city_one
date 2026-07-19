@@ -38,3 +38,4 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: '登录失败，请稍后重试' }, { status: 500 })
   }
 }
+export const dynamic = 'force-dynamic'

@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { getSystemSettings } from '@/lib/db'
 import { isAuthEnabled } from '@/lib/auth'
 
-export const dynamic = 'force-dynamic'
-
 export async function GET() {
   try {
     const settings = await getSystemSettings()
@@ -26,3 +24,4 @@ export async function GET() {
     return NextResponse.json({ ok: true, authEnabled: isAuthEnabled(), umami: null })
   }
 }
+export const dynamic = 'force-dynamic'

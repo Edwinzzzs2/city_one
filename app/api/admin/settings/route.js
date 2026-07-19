@@ -52,4 +52,5 @@ export async function PUT(request) {
     return NextResponse.json({ ok: false, error: '保存系统配置失败' }, { status: 500 })
   }
 }
+export const dynamic = 'force-dynamic'
 

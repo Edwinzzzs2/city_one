@@ -26,4 +26,5 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: '重置密码失败' }, { status: 500 })
   }
 }
+export const dynamic = 'force-dynamic'
 

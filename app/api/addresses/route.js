@@ -242,3 +242,4 @@ export async function DELETE() {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 })
   }
 }
+export const dynamic = 'force-dynamic'

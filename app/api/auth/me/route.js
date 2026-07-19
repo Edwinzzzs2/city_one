@@ -8,4 +8,5 @@ export async function GET() {
   }
   return NextResponse.json({ ok: true, authenticated: true, user })
 }
+export const dynamic = 'force-dynamic'
 

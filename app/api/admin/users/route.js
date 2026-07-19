@@ -54,4 +54,5 @@ export async function PATCH(request) {
     return NextResponse.json({ ok: false, error: error.message || '更新用户失败' }, { status: error.status || 500 })
   }
 }
+export const dynamic = 'force-dynamic'
 
