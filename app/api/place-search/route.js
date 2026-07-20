@@ -4,18 +4,37 @@ import { getAppUser } from '@/lib/auth'
 import { recordMapSearchLog } from '@/lib/db'
 
 function errorDiagnostics(error) {
-  const rootCause = error?.cause
-  const causes = Array.isArray(rootCause?.errors) ? rootCause.errors : [rootCause]
-  const codes = [...new Set(causes.map(cause => cause?.code).filter(Boolean))]
-  const details = causes
-    .filter(Boolean)
-    .map(cause => [cause?.name, cause?.code, cause?.message].filter(Boolean).join(': '))
+  const errors = []
+  const visit = item => {
+    if (!item || errors.includes(item)) return
+    errors.push(item)
+    visit(item.cause)
+    if (Array.isArray(item.errors)) item.errors.forEach(visit)
+  }
+  visit(error)
+
+  const codes = [...new Set(errors.map(item => item?.code).filter(Boolean))]
+  const details = errors
+    .map(item => [item?.name, item?.code, item?.message].filter(Boolean).join(': '))
     .filter(Boolean)
 
   return {
-    code: codes.join(', ') || rootCause?.code || null,
-    detail: details.join(' | ') || rootCause?.message || null,
+    code: codes.join(', ') || null,
+    detail: details.join(' | ') || null,
   }
+}
+
+function responseForSearchError(error, diagnostics) {
+  const codes = new Set(String(diagnostics.code || '').split(',').map(code => code.trim()).filter(Boolean))
+  const timedOut = codes.has('AMAP_CONNECT_TIMEOUT')
+    || codes.has('UND_ERR_CONNECT_TIMEOUT')
+    || codes.has('ETIMEDOUT')
+    || error?.name === 'TimeoutError'
+
+  if (timedOut) {
+    return { status: 504, message: '地图服务连接超时，请稍后重试' }
+  }
+  return { status: 400, message: error?.message || String(error) }
 }
 
 async function writeSearchLog(entry) {
@@ -53,21 +72,21 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, ...result })
   } catch (e) {
     const diagnostics = errorDiagnostics(e)
-    const errorMessage = e?.message || String(e)
+    const errorResponse = responseForSearchError(e, diagnostics)
     await writeSearchLog({
       userId: user.id,
       username: user.username,
       keywords: body?.keywords || body?.q,
       city: body?.city,
       status: 'error',
-      httpStatus: 400,
+      httpStatus: errorResponse.status,
       durationMs: Date.now() - startedAt,
-      errorMessage,
+      errorMessage: errorResponse.message,
       errorCode: diagnostics.code,
       errorDetail: diagnostics.detail,
       requestId,
     })
-    return NextResponse.json({ ok: false, error: errorMessage }, { status: 400 })
+    return NextResponse.json({ ok: false, error: errorResponse.message }, { status: errorResponse.status })
   }
 }
 export const dynamic = 'force-dynamic'
