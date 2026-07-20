@@ -18,6 +18,18 @@ const GEOCODE_DELAY_MS = 450
 const MAP_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000
 const MAP_SEARCH_COOLDOWN_MS = 1200
 const MAP_SEARCH_CACHE_MAX_ENTRIES = 30
+const MAP_SEARCH_RETRY_MIN_DELAY_MS = 500
+const MAP_SEARCH_RETRY_MAX_DELAY_MS = 1500
+const MAP_SEARCH_RETRY_MESSAGE_KEY = 'amap-search-retry'
+const AMAP_SEARCH_RETRY_CODES = new Set([
+  '10004', // ACCESS_TOO_FREQUENT
+  '10014', // QPS_HAS_EXCEEDED_THE_LIMIT
+  '10015', // GATEWAY_TIMEOUT
+  '10016', // SERVER_IS_BUSY
+  '10019', // CQPS_HAS_EXCEEDED_THE_LIMIT
+  '10020', // CKQPS_HAS_EXCEEDED_THE_LIMIT
+  '10021', // CUQPS_HAS_EXCEEDED_THE_LIMIT
+])
 const MOBILE_MEDIA_QUERY = '(max-width: 720px)'
 const MAP_COLORS = {
   store: '#0f6f62',
@@ -138,6 +150,25 @@ function searchPlacesInBrowser(AMap, { keywords, city }) {
     if (AMap?.PlaceSearch) runSearch()
     else AMap.plugin('AMap.PlaceSearch', runSearch)
   })
+}
+
+function isRetryableAmapSearchError(error) {
+  const code = amapText(error?.code).trim()
+  if (AMAP_SEARCH_RETRY_CODES.has(code)) return true
+
+  const detail = `${code} ${amapText(error?.message)}`
+  return /(qps|too frequent|fetch failed|network|timeout|server is busy|访问频繁|请求频繁|网络|超时|服务繁忙)/i.test(detail)
+}
+
+function randomMapSearchRetryDelay() {
+  return Math.round(
+    MAP_SEARCH_RETRY_MIN_DELAY_MS
+      + Math.random() * (MAP_SEARCH_RETRY_MAX_DELAY_MS - MAP_SEARCH_RETRY_MIN_DELAY_MS),
+  )
+}
+
+function waitFor(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function reportMapSearchLog(payload) {
@@ -369,6 +400,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const analysisOverlaysRef = useRef([])
   const mapSearchCacheRef = useRef(new Map())
   const lastMapSearchAtRef = useRef(0)
+  const mapSearchInFlightRef = useRef(false)
 
   const [mapLoading, setMapLoading] = useState(true)
   const [mapError, setMapError] = useState('')
@@ -930,6 +962,11 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       return
     }
 
+    if (mapSearchInFlightRef.current) {
+      message.info('搜索正在进行，请稍候')
+      return
+    }
+
     const now = Date.now()
     if (now - lastMapSearchAtRef.current < MAP_SEARCH_COOLDOWN_MS) {
       message.warning('搜索太频繁，请稍后再试')
@@ -942,14 +979,37 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     const cached = mapSearchCacheRef.current.get(cacheKey)
 
     setMapSearchText(keywords)
+    mapSearchInFlightRef.current = true
     setMapSearchLoading(true)
     const startedAt = Date.now()
+    let attempts = 0
     try {
       const cacheHit = cached && Date.now() - cached.createdAt < MAP_SEARCH_CACHE_TTL_MS
       const AMap = amapRef.current || await loadAmap({ key: amapKey, securityCode: amapSecurityCode })
-      const results = cacheHit
-        ? cached.results
-        : await searchPlacesInBrowser(AMap, { keywords, city })
+      let results = cached?.results || []
+      if (!cacheHit) {
+        attempts = 1
+        try {
+          results = await searchPlacesInBrowser(AMap, { keywords, city })
+        } catch (error) {
+          if (!isRetryableAmapSearchError(error)) throw error
+
+          attempts = 2
+          const retryDelay = randomMapSearchRetryDelay()
+          message.open({
+            key: MAP_SEARCH_RETRY_MESSAGE_KEY,
+            type: 'loading',
+            content: '当前请求较多，正在自动重试…',
+            duration: 0,
+          })
+          await waitFor(retryDelay)
+          try {
+            results = await searchPlacesInBrowser(AMap, { keywords, city })
+          } finally {
+            message.destroy(MAP_SEARCH_RETRY_MESSAGE_KEY)
+          }
+        }
+      }
 
       if (!cacheHit) {
         if (mapSearchCacheRef.current.size >= MAP_SEARCH_CACHE_MAX_ENTRIES) {
@@ -963,6 +1023,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
           status: 'success',
           resultCount: results.length,
           durationMs: Date.now() - startedAt,
+          attempts,
         })
       }
 
@@ -989,6 +1050,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         durationMs: Date.now() - startedAt,
         errorMessage: e?.message || '高德地点搜索失败',
         errorCode: e?.code || e?.name || 'AMAP_SEARCH_ERROR',
+        attempts: Math.max(attempts, 1),
       })
       trackEvent(readableEventName(selectedPoint ? '定点搜索失败' : '地图搜索失败', keywords), {
         event_type: 'map_search_error',
@@ -998,6 +1060,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       })
       message.error(e.message)
     } finally {
+      message.destroy(MAP_SEARCH_RETRY_MESSAGE_KEY)
+      mapSearchInFlightRef.current = false
       setMapSearchLoading(false)
     }
   }, [amapKey, amapSecurityCode, message, searchMode, searchQuery, selectedPoint])

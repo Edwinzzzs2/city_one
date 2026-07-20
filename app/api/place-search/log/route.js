@@ -20,7 +20,8 @@ export async function POST(request) {
     }
 
     const status = body?.status === 'success' ? 'success' : 'error'
-    await recordAmapUsage('place_search')
+    const attempts = Math.max(1, safeNumber(body?.attempts, 1, 2))
+    await recordAmapUsage('place_search', attempts)
     await recordMapSearchLog({
       userId: user.id,
       username: user.username,
@@ -32,7 +33,7 @@ export async function POST(request) {
       durationMs: safeNumber(body?.durationMs),
       errorMessage: status === 'error' ? body?.errorMessage : null,
       errorCode: status === 'error' ? body?.errorCode : null,
-      errorDetail: status === 'error' ? 'source=browser_amap_js' : null,
+      errorDetail: `source=browser_amap_js; attempts=${attempts}`,
       requestId: request.headers.get('x-vercel-id') || request.headers.get('x-request-id'),
     })
 
