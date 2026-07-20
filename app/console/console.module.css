@@ -74,3 +74,133 @@
   .switchCell { padding-inline: 6px; font-size: 9px; }
   .textButton { font-size: 9px; }
 }
+
+/* Expandable console navigation */
+.navPanel { display: flex; flex: 1; min-height: 0; flex-direction: column; position: relative; z-index: 1; }
+.menuToggle, .navBackdrop { display: none; }
+.refresh:disabled { opacity: .55; cursor: wait; }
+
+/* Map search logs */
+.logsWorkspace { display: grid; gap: 16px; }
+.logStats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #d7ded5; background: #f8faf6; }
+.logStats article { min-height: 104px; padding: 18px 20px; border-left: 1px solid #dfe5de; display: grid; grid-template-columns: 24px 1fr; align-content: center; gap: 7px 10px; }
+.logStats article:first-child { border-left: 0; }
+.logStats article>span:first-child { grid-row: 1 / 3; color: #0f6f62; font-size: 17px; padding-top: 2px; }
+.logStats article>span:nth-child(2) { color: #748078; font-size: 10px; }
+.logStats strong { color: #1c2b24; font-size: 22px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.logStats strong small { margin-left: 3px; color: #7d8981; font-size: 10px; font-weight: 500; }
+.logFilters { display: grid; grid-template-columns: minmax(260px, 1.8fr) minmax(130px, .7fr) minmax(150px, .8fr) auto; gap: 12px; align-items: end; padding: 17px 18px; border: 1px solid #d7ded5; background: #f8faf6; }
+.logFilters label { min-width: 0; display: grid; gap: 7px; color: #536159; font-size: 10px; font-weight: 700; }
+.logFilters select, .logSearchField>div { width: 100%; height: 40px; border: 1px solid #cbd5cc; background: #fff; color: #24322b; outline: none; }
+.logFilters select { padding: 0 11px; font: inherit; font-size: 11px; }
+.logFilters select:focus, .logSearchField>div:focus-within { border-color: #0f6f62; box-shadow: 0 0 0 3px rgba(15,111,98,.08); }
+.logSearchField>div { display: flex; align-items: center; gap: 9px; padding: 0 11px; color: #748078; }
+.logSearchField input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #24322b; font: inherit; font-size: 11px; }
+.logSearchField input::placeholder { color: #7d8981; }
+.logFilterActions { display: flex; gap: 8px; }
+.logFilterActions .primary, .filterReset { height: 40px; white-space: nowrap; }
+.filterReset { border: 1px solid #cbd5cc; background: transparent; color: #5e6c63; padding: 0 14px; font: inherit; font-size: 11px; cursor: pointer; }
+.filterReset:hover { border-color: #0f6f62; color: #0f6f62; }
+.logTableCard { border: 1px solid #d7ded5; background: #f8faf6; min-width: 0; }
+.logTable { min-width: 0; }
+.logHeader, .logRow { display: grid; grid-template-columns: 78px 138px minmax(180px, 1.35fr) minmax(150px, .95fr) 88px minmax(190px, 1.4fr); gap: 14px; align-items: center; padding: 0 20px; }
+.logHeader { min-height: 40px; background: #eff3ee; color: #758179; font-size: 9px; letter-spacing: .08em; }
+.logRow { min-height: 84px; border-top: 1px solid #e0e6df; color: #34423a; font-size: 10px; }
+.logRowError { box-shadow: inset 3px 0 #a34b40; }
+.logRow time { color: #657269; font-size: 10px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.logStatus { display: inline-flex; min-width: 42px; height: 24px; align-items: center; justify-content: center; border: 1px solid; font-size: 9px; font-weight: 800; }
+.logStatusSuccess { border-color: #a9c4b6; background: #e7f0e9; color: #286b54; }
+.logStatusError { border-color: #d7aea8; background: #f5e7e4; color: #963f37; }
+.logKeyword, .logScope, .logPerformance, .logDiagnosis { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.logKeyword strong, .logScope strong, .logDiagnosis>strong { overflow: hidden; color: #25332c; font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.logKeyword span, .logScope span, .logPerformance span { overflow: hidden; color: #7b877f; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.logScope span { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+.logPerformance strong { color: #0f6f62; font-size: 17px; font-variant-numeric: tabular-nums; }
+.logDiagnosis>span { display: inline-flex; align-items: center; gap: 6px; color: #46705e; }
+.logDiagnosis code { width: fit-content; max-width: 100%; overflow: hidden; color: #913e36; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.logDiagnosis details { color: #6d7971; font-size: 9px; }
+.logDiagnosis summary { width: fit-content; color: #0f6f62; cursor: pointer; }
+.logDiagnosis details p { margin-top: 7px; line-height: 1.5; overflow-wrap: anywhere; }
+.logLoading, .logEmpty, .logError { min-height: 230px; display: flex; align-items: center; justify-content: center; }
+.logLoading { flex-direction: column; gap: 9px; color: #748078; font-size: 10px; }
+.logLoading i { width: min(520px, 70%); height: 12px; background: #e3e9e2; animation: logPulse 1.2s ease-in-out infinite alternate; }
+.logLoading i:nth-child(2) { width: min(430px, 58%); animation-delay: .12s; }
+.logLoading i:nth-child(3) { width: min(470px, 64%); animation-delay: .24s; }
+.logEmpty { flex-direction: column; gap: 8px; color: #849087; text-align: center; }
+.logEmpty>span:first-child { color: #6b887a; font-size: 24px; }
+.logEmpty strong { color: #445249; font-size: 13px; }
+.logEmpty span:last-child { font-size: 10px; }
+.logError { gap: 12px; color: #8c443d; }
+.logError>span:first-child { font-size: 21px; }
+.logError>div { display: flex; flex-direction: column; gap: 3px; }
+.logError strong { font-size: 12px; }
+.logError div span { font-size: 10px; }
+.logError button { border: 1px solid #c8928c; background: transparent; color: #8c443d; padding: 7px 12px; font: inherit; font-size: 10px; cursor: pointer; }
+.logPagination { min-height: 56px; border-top: 1px solid #dfe5de; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: #66736b; font-size: 10px; }
+.logPagination>div { display: flex; gap: 7px; }
+.logPagination button { width: 32px; height: 32px; border: 1px solid #cbd5cc; background: #fff; color: #526158; cursor: pointer; }
+.logPagination button:hover:not(:disabled) { border-color: #0f6f62; color: #0f6f62; }
+.logPagination button:disabled { opacity: .4; cursor: not-allowed; }
+@keyframes logPulse { from { opacity: .48; } to { opacity: 1; } }
+
+@media (max-width: 1180px) {
+  .logStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .logStats article:nth-child(3) { border-left: 0; border-top: 1px solid #dfe5de; }
+  .logStats article:nth-child(4) { border-top: 1px solid #dfe5de; }
+  .logFilters { grid-template-columns: minmax(220px, 1fr) 130px 150px; }
+  .logFilterActions { grid-column: 1 / -1; justify-content: flex-end; }
+  .logHeader, .logRow { grid-template-columns: 70px 125px minmax(150px, 1.2fr) minmax(130px, .85fr) 76px minmax(165px, 1.1fr); gap: 10px; padding-inline: 14px; }
+}
+
+@media (max-width: 760px) {
+  .sidebar { z-index: 30; }
+  .sidebar:after { display: none; }
+  .brand { flex: 0 1 auto; margin: 0; padding: 0; gap: 9px; }
+  .brand div { display: flex; }
+  .brand strong { font-size: 14px; }
+  .brand span { font-size: 7px; }
+  .menuToggle { margin-left: auto; height: 40px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #dce8e0; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 10px; cursor: pointer; position: relative; z-index: 2; }
+  .navBackdrop { display: block; position: fixed; z-index: 20; inset: 62px 0 0; border: 0; background: rgba(8,19,15,.48); backdrop-filter: blur(2px); }
+  .navPanel { display: none; }
+  .sidebarOpen .navPanel { display: flex; position: fixed; z-index: 31; top: 72px; left: 10px; right: 10px; max-height: calc(100dvh - 84px); overflow-y: auto; padding: 12px; background: #11251f; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 24px 60px rgba(7,22,16,.38); }
+  .sidebar .navPanel nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: none; gap: 6px; }
+  .sidebar .navPanel nav button { min-width: 0; height: 48px; padding: 0 12px; flex: none; flex-direction: row; justify-content: flex-start; gap: 10px; font-size: 11px; text-align: left; }
+  .sidebar .navPanel nav button>span:first-child { font-size: 16px; }
+  .sidebar .navPanel nav button span:nth-child(2) { display: block; flex: 1; max-width: none; }
+  .sidebar .navPanel nav button i { display: inline-flex; }
+  .sidebar .navPanel .operator { display: flex; justify-content: flex-start; margin-top: 12px; padding: 14px 8px 9px; }
+  .sidebar .navPanel .operator>span { display: flex; }
+  .sidebar .navPanel .back { display: flex; min-height: 40px; padding-inline: 8px; }
+  .sidebar .navPanel .logout { min-height: 40px; flex: none; flex-direction: row; justify-content: flex-start; gap: 8px; padding: 8px; border-top: 1px solid rgba(255,255,255,.08); color: #b8d0c3; font-size: 11px; }
+  .sidebar .navPanel .logout span { font-size: 11px; }
+  .notice { z-index: 40; }
+  .logStats { grid-template-columns: repeat(2, minmax(0, 1fr)); border-radius: 10px; overflow: hidden; }
+  .logStats article { min-height: 88px; padding: 14px; }
+  .logStats strong { font-size: 18px; }
+  .logFilters { grid-template-columns: 1fr 1fr; padding: 14px; border-radius: 10px; }
+  .logSearchField { grid-column: 1 / -1; }
+  .logFilterActions { grid-column: 1 / -1; justify-content: stretch; }
+  .logFilterActions button { flex: 1; }
+  .logTableCard { border-radius: 10px; overflow: hidden; }
+  .logHeader { display: none; }
+  .logRow { min-height: 0; grid-template-columns: 1fr 1fr; gap: 14px 12px; margin: 10px; padding: 15px 13px; border: 1px solid #dde4dc; background: #fff; }
+  .logRowError { border-color: #e0bbb6; box-shadow: inset 3px 0 #a34b40; }
+  .logRow>div, .logRow>time { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .logRow>div:before, .logRow>time:before { content: attr(data-label); color: #89948d; font-size: 8px; font-style: normal; font-weight: 700; letter-spacing: .08em; }
+  .logKeyword, .logDiagnosis { grid-column: 1 / -1; }
+  .logKeyword strong, .logScope strong, .logDiagnosis>strong { white-space: normal; overflow-wrap: anywhere; }
+  .logLoading, .logEmpty, .logError { min-height: 210px; padding: 24px; }
+  .logError { align-items: flex-start; flex-wrap: wrap; }
+  .logPagination { padding-inline: 14px; }
+}
+
+@media (max-width: 420px) {
+  .brand div { display: none; }
+  .sidebar .navPanel nav { grid-template-columns: 1fr; }
+  .logFilters { grid-template-columns: 1fr; }
+  .logFilters label, .logSearchField, .logFilterActions { grid-column: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logLoading i { animation: none; }
+}

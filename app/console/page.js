@@ -3,15 +3,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { App as AntdApp } from 'antd'
 import {
-  ArrowLeftOutlined, CheckCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined, LogoutOutlined,
-  DatabaseOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined, LockOutlined, PlusOutlined, ReloadOutlined,
-  RobotOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, UploadOutlined, UserOutlined,
+  ArrowLeftOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined, LogoutOutlined,
+  DatabaseOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined, LeftOutlined,
+  LockOutlined, MenuOutlined, PlusOutlined, ReloadOutlined, RightOutlined, RobotOutlined, SafetyCertificateOutlined,
+  SearchOutlined, SettingOutlined, TeamOutlined, UploadOutlined, UserOutlined, WarningOutlined,
 } from '@ant-design/icons'
 import AiParseModal from '@/components/AiParseModal'
 import useDataStore from '@/store/useDataStore'
 import { parseExcelFile } from '@/utils/excelParser'
 import styles from './console.module.css'
 import dataStyles from './data.module.css'
+
+const TAB_META = {
+  users: { label: '用户与权限', code: 'ACCESS', icon: TeamOutlined },
+  whitelist: { label: '注册白名单', code: 'REGISTRATION', icon: SafetyCertificateOutlined },
+  data: { label: '数据导入', code: 'DATA', icon: DatabaseOutlined },
+  logs: { label: '地图日志', code: 'MAP LOGS', icon: EnvironmentOutlined },
+  settings: { label: '系统配置', code: 'SETTINGS', icon: SettingOutlined },
+}
 
 async function api(url, options) {
   const response = await fetch(url, {
@@ -24,8 +33,15 @@ async function api(url, options) {
 }
 
 function formatDate(value) {
-  if (!value) return '—'
+  if (!value) return '-'
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+}
+
+function formatBytes(value) {
+  const bytes = Number(value || 0)
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 function Toggle({ checked, onChange, disabled, label }) {
@@ -56,6 +72,17 @@ function ConsolePageContent() {
   const [importing, setImporting] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [visiblePasswords, setVisiblePasswords] = useState({})
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [logs, setLogs] = useState([])
+  const [logSummary, setLogSummary] = useState({})
+  const [logPagination, setLogPagination] = useState({ page: 1, pageCount: 1, total: 0 })
+  const [logPage, setLogPage] = useState(1)
+  const [logStatus, setLogStatus] = useState('')
+  const [logDays, setLogDays] = useState('7')
+  const [logQuery, setLogQuery] = useState('')
+  const [logDraft, setLogDraft] = useState('')
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsError, setLogsError] = useState('')
   const fileRef = useRef(null)
 
   const stats = useMemo(() => ({
@@ -83,10 +110,42 @@ function ConsolePageContent() {
     }
   }
 
+  async function loadLogs({ page = logPage, status = logStatus, days = logDays, query = logQuery } = {}) {
+    setLogsLoading(true)
+    setLogsError('')
+    try {
+      const params = new URLSearchParams({ page: String(page) })
+      if (status) params.set('status', status)
+      if (days) params.set('days', days)
+      if (query) params.set('q', query)
+      const data = await api(`/api/admin/map-search-logs?${params.toString()}`)
+      setLogs(data.logs || [])
+      setLogSummary(data.summary || {})
+      setLogPagination(data.pagination || { page: 1, pageCount: 1, total: 0 })
+    } catch (error) {
+      setLogsError(error.message || '地图日志加载失败')
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadAll()
     initSettings()
   }, [initSettings])
+
+  useEffect(() => {
+    if (tab === 'logs') loadLogs()
+  }, [tab, logPage, logStatus, logDays, logQuery])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setMobileNavOpen(false)
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [mobileNavOpen])
 
   function flash(text, type = 'success') {
     setNotice({ text, type })
@@ -165,6 +224,40 @@ function ConsolePageContent() {
     setSettings(current => ({ ...current, [key]: value }))
   }
 
+  function selectTab(nextTab) {
+    setTab(nextTab)
+    setMobileNavOpen(false)
+  }
+
+  function submitLogSearch(event) {
+    event.preventDefault()
+    const nextQuery = logDraft.trim()
+    setLogPage(1)
+    setLogQuery(nextQuery)
+    if (nextQuery === logQuery && logPage === 1) loadLogs({ page: 1, query: nextQuery })
+  }
+
+  function resetLogFilters() {
+    setLogDraft('')
+    setLogQuery('')
+    setLogStatus('')
+    setLogDays('7')
+    setLogPage(1)
+  }
+
+  function refreshCurrent() {
+    if (tab === 'logs') loadLogs()
+    else loadAll()
+  }
+
+  function navBadge(key) {
+    if (key === 'users') return stats.users
+    if (key === 'whitelist') return stats.pending
+    if (key === 'data') return rawRows.length || null
+    if (key === 'logs') return Number(logSummary.errors_24h) || null
+    return null
+  }
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login?next=/console'
@@ -174,23 +267,35 @@ function ConsolePageContent() {
 
   return (
     <div className={styles.shell} style={{ position: 'relative', zIndex: 1 }}>
-      <aside className={styles.sidebar}>
-        <a className={styles.brand} href="/"><img src="/icon.svg" alt="" /><div><strong>CITY ONE</strong><span>CONTROL DESK</span></div></a>
-        <nav>
-          <button className={tab === 'users' ? styles.active : ''} onClick={() => setTab('users')}><TeamOutlined /><span>用户权限</span><i>{stats.users}</i></button>
-          <button className={tab === 'whitelist' ? styles.active : ''} onClick={() => setTab('whitelist')}><SafetyCertificateOutlined /><span>注册白名单</span><i>{stats.pending}</i></button>
-          <button className={tab === 'data' ? styles.active : ''} onClick={() => setTab('data')}><DatabaseOutlined /><span>数据导入</span>{rawRows.length > 0 && <i>{rawRows.length}</i>}</button>
-          <button className={tab === 'settings' ? styles.active : ''} onClick={() => setTab('settings')}><SettingOutlined /><span>系统配置</span></button>
-        </nav>
-        <div className={styles.operator}><div><UserOutlined /></div><span><small>当前管理员</small><strong>{viewer?.username}</strong></span></div>
-        <a className={styles.back} href="/"><ArrowLeftOutlined /> 返回地址台账</a>
-        <button type="button" className={styles.logout} onClick={logout} aria-label="退出登录" title="退出登录"><LogoutOutlined /><span>退出</span></button>
+      {mobileNavOpen && <button type="button" className={styles.navBackdrop} onClick={() => setMobileNavOpen(false)} aria-label="关闭管理菜单" />}
+      <aside className={`${styles.sidebar} ${mobileNavOpen ? styles.sidebarOpen : ''}`}>
+        <a className={styles.brand} href="/" aria-label="返回地址台账"><img src="/icon.svg" alt="" /><div><strong>CITY ONE</strong><span>CONTROL DESK</span></div></a>
+        <button type="button" className={styles.menuToggle} onClick={() => setMobileNavOpen(open => !open)} aria-expanded={mobileNavOpen} aria-controls="console-navigation">
+          {mobileNavOpen ? <CloseOutlined /> : <MenuOutlined />}
+          <span>{mobileNavOpen ? '关闭' : '菜单'}</span>
+        </button>
+        <div className={styles.navPanel} id="console-navigation">
+          <nav aria-label="后台管理菜单">
+            {Object.entries(TAB_META).map(([key, item]) => {
+              const Icon = item.icon
+              const badge = navBadge(key)
+              return (
+                <button type="button" key={key} className={tab === key ? styles.active : ''} onClick={() => selectTab(key)} aria-label={item.label} aria-current={tab === key ? 'page' : undefined}>
+                  <Icon /><span>{item.label}</span>{badge ? <i>{badge}</i> : null}
+                </button>
+              )
+            })}
+          </nav>
+          <div className={styles.operator}><div><UserOutlined /></div><span><small>当前管理员</small><strong>{viewer?.username}</strong></span></div>
+          <a className={styles.back} href="/"><ArrowLeftOutlined /> 返回地址台账</a>
+          <button type="button" className={styles.logout} onClick={logout} aria-label="退出登录" title="退出登录"><LogoutOutlined /><span>退出</span></button>
+        </div>
       </aside>
 
       <main className={styles.main}>
         <header className={styles.topbar}>
-          <div><span>ADMIN CONSOLE / {tab.toUpperCase()}</span><h1>{tab === 'users' ? '用户与权限' : tab === 'whitelist' ? '注册白名单' : tab === 'data' ? '数据导入' : '系统配置'}</h1></div>
-          <button className={styles.refresh} onClick={() => loadAll()}><ReloadOutlined /> 刷新</button>
+          <div><span>ADMIN CONSOLE / {TAB_META[tab].code}</span><h1>{TAB_META[tab].label}</h1></div>
+          <button type="button" className={styles.refresh} onClick={refreshCurrent} disabled={tab === 'logs' && logsLoading}><ReloadOutlined /> 刷新</button>
         </header>
 
         {notice && <div className={`${styles.notice} ${notice.type === 'error' ? styles.noticeError : ''}`}>{notice.type === 'error' ? <CloseOutlined /> : <CheckCircleOutlined />}{notice.text}</div>}
@@ -237,6 +342,78 @@ function ConsolePageContent() {
             <div className={styles.inviteList}>{whitelist.length === 0 && <div className={styles.empty}>还没有添加白名单</div>}{whitelist.map(item => <article key={item.id}>
               <div className={`${styles.statusDot} ${item.used_at ? styles.used : ''}`} /><div><strong>{item.username}</strong><span>{item.grant_admin && <em><CrownOutlined /> 管理员</em>}{item.used_at ? `已由 ${item.used_by_username || item.username} 使用` : '等待注册'}</span></div><time>{formatDate(item.used_at || item.created_at)}</time>{!item.used_at && <button onClick={() => removeWhitelist(item.id)}><CloseOutlined /></button>}
             </article>)}</div>
+          </div>
+        </section>}
+
+        {tab === 'logs' && <section className={styles.logsWorkspace}>
+          <div className={styles.logStats}>
+            <article><ClockCircleOutlined /><span>24 小时请求</span><strong>{Number(logSummary.requests_24h || 0)}</strong></article>
+            <article><WarningOutlined /><span>24 小时失败</span><strong>{Number(logSummary.errors_24h || 0)}</strong></article>
+            <article><ReloadOutlined /><span>平均耗时</span><strong>{Number(logSummary.avg_duration_24h || 0)}<small>ms</small></strong></article>
+            <article><DatabaseOutlined /><span>日志表占用</span><strong>{formatBytes(logSummary.table_bytes)}</strong></article>
+          </div>
+
+          <form className={styles.logFilters} onSubmit={submitLogSearch}>
+            <label className={styles.logSearchField}>
+              <span>搜索内容</span>
+              <div><SearchOutlined /><input value={logDraft} onChange={event => setLogDraft(event.target.value)} maxLength={100} placeholder="关键词、用户、城市或错误码" /></div>
+            </label>
+            <label>
+              <span>结果状态</span>
+              <select value={logStatus} onChange={event => { setLogStatus(event.target.value); setLogPage(1) }}>
+                <option value="">全部状态</option>
+                <option value="success">成功</option>
+                <option value="error">失败</option>
+              </select>
+            </label>
+            <label>
+              <span>时间范围</span>
+              <select value={logDays} onChange={event => { setLogDays(event.target.value); setLogPage(1) }}>
+                <option value="1">最近 24 小时</option>
+                <option value="7">最近 7 天</option>
+                <option value="30">最近 30 天</option>
+                <option value="">全部保留日志</option>
+              </select>
+            </label>
+            <div className={styles.logFilterActions}>
+              <button type="submit" className={styles.primary}><SearchOutlined /> 查询</button>
+              <button type="button" className={styles.filterReset} onClick={resetLogFilters}>重置</button>
+            </div>
+          </form>
+
+          <div className={styles.logTableCard} aria-busy={logsLoading}>
+            <div className={styles.sectionHead}>
+              <div><span>MAP SEARCH REQUESTS</span><h2>地图点搜索记录</h2></div>
+              <p>当前筛选共 {Number(logPagination.total || 0)} 条，数据库最多保留约 5000 条。</p>
+            </div>
+            <div className={styles.logTable} role="table" aria-label="地图点搜索日志">
+              <div className={styles.logHeader} role="row">
+                <span role="columnheader">状态</span><span role="columnheader">发生时间</span><span role="columnheader">搜索内容</span><span role="columnheader">用户与范围</span><span role="columnheader">结果</span><span role="columnheader">诊断</span>
+              </div>
+              {logsLoading && <div className={styles.logLoading} aria-live="polite"><i /><i /><i /><span>正在读取日志</span></div>}
+              {!logsLoading && logsError && <div className={styles.logError}><WarningOutlined /><div><strong>日志加载失败</strong><span>{logsError}</span></div><button type="button" onClick={() => loadLogs()}>重试</button></div>}
+              {!logsLoading && !logsError && logs.length === 0 && <div className={styles.logEmpty}><EnvironmentOutlined /><strong>没有匹配的地图日志</strong><span>调整状态、时间范围或搜索内容后再试。</span></div>}
+              {!logsLoading && !logsError && logs.map(log => {
+                const failed = log.status === 'error'
+                return <article className={`${styles.logRow} ${failed ? styles.logRowError : ''}`} role="row" key={log.id}>
+                  <div role="cell" data-label="状态"><span className={`${styles.logStatus} ${failed ? styles.logStatusError : styles.logStatusSuccess}`}>{failed ? '失败' : '成功'}</span></div>
+                  <time role="cell" data-label="发生时间" dateTime={log.created_at}>{formatDate(log.created_at)}</time>
+                  <div className={styles.logKeyword} role="cell" data-label="搜索内容"><strong>{log.keywords || '(空关键词)'}</strong><span>{log.city ? `限定城市：${log.city}` : '全国范围'}</span></div>
+                  <div className={styles.logScope} role="cell" data-label="用户与范围"><strong>{log.username || 'guest'}</strong><span>{log.request_id || '无请求 ID'}</span></div>
+                  <div className={styles.logPerformance} role="cell" data-label="结果"><strong>{log.result_count ?? '-'}</strong><span>{Number(log.duration_ms || 0)} ms</span></div>
+                  <div className={styles.logDiagnosis} role="cell" data-label="诊断">
+                    {failed ? <><strong>{log.error_message || '未知错误'}</strong>{log.error_code && <code>{log.error_code}</code>}{log.error_detail && <details><summary>查看底层原因</summary><p>{log.error_detail}</p></details>}</> : <span><CheckCircleOutlined /> 请求正常</span>}
+                  </div>
+                </article>
+              })}
+            </div>
+            <div className={styles.logPagination}>
+              <span>第 {Number(logPagination.page || 1)} / {Number(logPagination.pageCount || 1)} 页</span>
+              <div>
+                <button type="button" onClick={() => setLogPage(page => Math.max(1, page - 1))} disabled={logPage <= 1} aria-label="上一页"><LeftOutlined /></button>
+                <button type="button" onClick={() => setLogPage(page => Math.min(Number(logPagination.pageCount || 1), page + 1))} disabled={logPage >= Number(logPagination.pageCount || 1)} aria-label="下一页"><RightOutlined /></button>
+              </div>
+            </div>
           </div>
         </section>}
 
