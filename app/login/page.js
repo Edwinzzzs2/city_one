@@ -48,7 +48,7 @@ export default function LoginPage() {
   const isLogin = mode === 'login'
 
   return (
-    <main className={styles.page} style={{ height: '100dvh' }}>
+    <main className={styles.page}>
       <div className={styles.grid} aria-hidden="true" />
       <section className={styles.story}>
         <span className={styles.eyebrow}>CITY ADDRESS LEDGER</span>
@@ -76,6 +76,8 @@ export default function LoginPage() {
                 <UserOutlined />
                 <input
                   autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   value={username}
                   onChange={event => setUsername(event.target.value)}
                   placeholder="输入用户名"
