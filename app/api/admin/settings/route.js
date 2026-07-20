@@ -8,6 +8,7 @@ const KEY_MAP = {
   apiBaseUrl: 'ai_api_base_url', apiKey: 'ai_api_key', model: 'ai_model', batchSize: 'ai_batch_size',
   themeMode: 'ui_theme_mode', protectionRadiusKm: 'ui_protection_radius_km', showProtection: 'ui_show_protection',
   amapJsKey: 'amap_js_key', amapSecurityCode: 'amap_security_code', amapWebServiceKey: 'amap_web_service_key',
+  amapMapMonthlyQuota: 'amap_map_monthly_quota', amapSearchMonthlyQuota: 'amap_search_monthly_quota',
   umamiWebsiteId: 'umami_website_id', umamiScriptUrl: 'umami_script_url', umamiHostUrl: 'umami_host_url',
   umamiDomains: 'umami_domains', umamiTag: 'umami_tag', umamiAutoTrack: 'umami_auto_track',
   umamiDoNotTrack: 'umami_do_not_track', umamiExcludeSearch: 'umami_exclude_search', umamiExcludeHash: 'umami_exclude_hash',
@@ -53,4 +54,3 @@ export async function PUT(request) {
   }
 }
 export const dynamic = 'force-dynamic'
-

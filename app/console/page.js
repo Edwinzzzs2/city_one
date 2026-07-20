@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { App as AntdApp } from 'antd'
 import {
-  ArrowLeftOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined, LogoutOutlined,
+  ArrowLeftOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined, DashboardOutlined, LogoutOutlined,
   DatabaseOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined, LeftOutlined,
   LockOutlined, MenuOutlined, PlusOutlined, ReloadOutlined, RightOutlined, RobotOutlined, SafetyCertificateOutlined,
   SearchOutlined, SettingOutlined, TeamOutlined, UploadOutlined, UserOutlined, WarningOutlined,
@@ -18,6 +18,7 @@ const TAB_META = {
   users: { label: '用户与权限', code: 'ACCESS', icon: TeamOutlined },
   whitelist: { label: '注册白名单', code: 'REGISTRATION', icon: SafetyCertificateOutlined },
   data: { label: '数据导入', code: 'DATA', icon: DatabaseOutlined },
+  usage: { label: '高德用量', code: 'AMAP METER', icon: DashboardOutlined },
   logs: { label: '地图日志', code: 'MAP LOGS', icon: EnvironmentOutlined },
   settings: { label: '系统配置', code: 'SETTINGS', icon: SettingOutlined },
 }
@@ -42,6 +43,46 @@ function formatBytes(value) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function formatCount(value) {
+  return new Intl.NumberFormat('zh-CN').format(Number(value || 0))
+}
+
+function UsageMeter({ code, title, description, data }) {
+  const configured = Number(data?.quota || 0) > 0
+  const percentage = configured ? Number(data?.percentage || 0) : 0
+  return (
+    <article className={styles.usageMeter}>
+      <div className={styles.usageMeterHead}><span>{code}</span><em>{configured ? `${percentage}%` : '未配置额度'}</em></div>
+      <div className={styles.usageMeterBody}>
+        <div className={styles.usageDial} style={{ '--meter-value': `${percentage}%` }}><div><strong>{formatCount(data?.month)}</strong><span>本月调用</span></div></div>
+        <div className={styles.usageNumbers}>
+          <h2>{title}</h2><p>{description}</p>
+          <dl>
+            <div><dt>今日</dt><dd>{formatCount(data?.today)}</dd></div>
+            <div><dt>月额度</dt><dd>{configured ? formatCount(data?.quota) : '待配置'}</dd></div>
+            <div><dt>预估剩余</dt><dd>{configured ? formatCount(data?.remaining) : '—'}</dd></div>
+          </dl>
+        </div>
+      </div>
+      <div className={styles.usageTrack}><i style={{ width: `${percentage}%` }} /></div>
+    </article>
+  )
+}
+
+function UsageTrend({ rows = [] }) {
+  const max = Math.max(1, ...rows.flatMap(row => [Number(row.map_init || 0), Number(row.place_search || 0)]))
+  return (
+    <div className={styles.usageTrend} role="img" aria-label="最近十四天高德地图初始化与地点搜索调用趋势">
+      {rows.map(row => (
+        <div key={row.date} title={`${row.date}：地图 ${row.map_init}，搜索 ${row.place_search}`}>
+          <span><i style={{ height: `${Math.max(3, (Number(row.map_init || 0) / max) * 100)}%` }} /><b style={{ height: `${Math.max(3, (Number(row.place_search || 0) / max) * 100)}%` }} /></span>
+          <small>{String(row.date || '').slice(5)}</small>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function Toggle({ checked, onChange, disabled, label }) {
@@ -83,6 +124,9 @@ function ConsolePageContent() {
   const [logDraft, setLogDraft] = useState('')
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsError, setLogsError] = useState('')
+  const [amapUsage, setAmapUsage] = useState(null)
+  const [amapUsageLoading, setAmapUsageLoading] = useState(false)
+  const [amapUsageError, setAmapUsageError] = useState('')
   const fileRef = useRef(null)
 
   const stats = useMemo(() => ({
@@ -129,6 +173,18 @@ function ConsolePageContent() {
     }
   }
 
+  async function loadAmapUsage() {
+    setAmapUsageLoading(true)
+    setAmapUsageError('')
+    try {
+      setAmapUsage(await api('/api/admin/amap-usage'))
+    } catch (error) {
+      setAmapUsageError(error.message || '高德用量加载失败')
+    } finally {
+      setAmapUsageLoading(false)
+    }
+  }
+
   useEffect(() => {
     loadAll()
     initSettings()
@@ -137,6 +193,10 @@ function ConsolePageContent() {
   useEffect(() => {
     if (tab === 'logs') loadLogs()
   }, [tab, logPage, logStatus, logDays, logQuery])
+
+  useEffect(() => {
+    if (tab === 'usage') loadAmapUsage()
+  }, [tab])
 
   useEffect(() => {
     if (!mobileNavOpen) return undefined
@@ -247,6 +307,7 @@ function ConsolePageContent() {
 
   function refreshCurrent() {
     if (tab === 'logs') loadLogs()
+    else if (tab === 'usage') loadAmapUsage()
     else loadAll()
   }
 
@@ -295,7 +356,7 @@ function ConsolePageContent() {
       <main className={styles.main}>
         <header className={styles.topbar}>
           <div><span>ADMIN CONSOLE / {TAB_META[tab].code}</span><h1>{TAB_META[tab].label}</h1></div>
-          <button type="button" className={styles.refresh} onClick={refreshCurrent} disabled={tab === 'logs' && logsLoading}><ReloadOutlined /> 刷新</button>
+          <button type="button" className={styles.refresh} onClick={refreshCurrent} disabled={(tab === 'logs' && logsLoading) || (tab === 'usage' && amapUsageLoading)}><ReloadOutlined /> 刷新</button>
         </header>
 
         {notice && <div className={`${styles.notice} ${notice.type === 'error' ? styles.noticeError : ''}`}>{notice.type === 'error' ? <CloseOutlined /> : <CheckCircleOutlined />}{notice.text}</div>}
@@ -343,6 +404,28 @@ function ConsolePageContent() {
               <div className={`${styles.statusDot} ${item.used_at ? styles.used : ''}`} /><div><strong>{item.username}</strong><span>{item.grant_admin && <em><CrownOutlined /> 管理员</em>}{item.used_at ? `已由 ${item.used_by_username || item.username} 使用` : '等待注册'}</span></div><time>{formatDate(item.used_at || item.created_at)}</time>{!item.used_at && <button onClick={() => removeWhitelist(item.id)}><CloseOutlined /></button>}
             </article>)}</div>
           </div>
+        </section>}
+
+        {tab === 'usage' && <section className={styles.usageWorkspace}>
+          <div className={styles.usageIntro}>
+            <div><b><DashboardOutlined /></b><span>AMAP USAGE ESTIMATE</span><h2>调用量仪表盘</h2></div>
+            <p>统计本系统产生的 JS 地图初始化与地点搜索调用。高德未开放余额查询接口，因此剩余额度按系统配置估算，最终账单以高德控制台为准。</p>
+            <em>Asia / Shanghai · {amapUsage?.period?.monthStart || '本月'} — {amapUsage?.period?.monthEnd || ''}</em>
+          </div>
+
+          {amapUsageLoading && !amapUsage && <div className={styles.usageState}><span /><strong>正在汇总调用记录</strong></div>}
+          {!amapUsageLoading && amapUsageError && <div className={`${styles.usageState} ${styles.usageStateError}`}><WarningOutlined /><strong>{amapUsageError}</strong><button type="button" onClick={loadAmapUsage}>重新读取</button></div>}
+          {amapUsage && <>
+            <div className={styles.usageGrid}>
+              <UsageMeter code="MAP INIT" title="地图图面初始化" description="用户打开地图视图并成功创建高德地图实例。" data={amapUsage.services?.mapInit} />
+              <UsageMeter code="PLACE SEARCH" title="地点搜索" description="用户点击搜索且实际向高德发起查询；缓存命中不重复计数。" data={amapUsage.services?.placeSearch} />
+            </div>
+            <div className={styles.usageHistory}>
+              <div className={styles.sectionHead}><div><span>14 DAY SIGNAL</span><h2>最近十四天调用趋势</h2></div><p><i /> 地图初始化 <b /> 地点搜索</p></div>
+              <UsageTrend rows={amapUsage.daily} />
+            </div>
+            <div className={styles.usageFootnote}><WarningOutlined /><span>这里只统计本项目成功上报的调用，不包含同一高德账号下其他应用、被浏览器拦截的日志或高德侧额外计费项目。</span><button type="button" onClick={() => selectTab('settings')}>配置月额度</button></div>
+          </>}
         </section>}
 
         {tab === 'logs' && <section className={styles.logsWorkspace}>
@@ -474,6 +557,8 @@ function ConsolePageContent() {
             <Field label="Web JS Key"><input value={settings.amapJsKey} onChange={e => changeSetting('amapJsKey', e.target.value)} /></Field>
             <Field label="JS 安全密钥"><input type="password" value={settings.amapSecurityCode} onChange={e => changeSetting('amapSecurityCode', e.target.value)} /></Field>
             <Field label="Web 服务 Key" hint="仅在服务端用于地理编码" wide><input type="password" value={settings.amapWebServiceKey} onChange={e => changeSetting('amapWebServiceKey', e.target.value)} /></Field>
+            <Field label="地图初始化月额度" hint="从高德控制台填写；0 表示未配置"><input type="number" min="0" step="1" value={settings.amapMapMonthlyQuota ?? 0} onChange={e => changeSetting('amapMapMonthlyQuota', e.target.value)} /></Field>
+            <Field label="地点搜索月额度" hint="从高德控制台填写；0 表示未配置"><input type="number" min="0" step="1" value={settings.amapSearchMonthlyQuota ?? 0} onChange={e => changeSetting('amapSearchMonthlyQuota', e.target.value)} /></Field>
           </div></div>
           <div className={styles.configSection}><div className={styles.configTitle}><b>UI</b><div><h3>界面默认值</h3><p>新设备首次打开时采用的显示偏好</p></div></div><div className={styles.fieldGrid}>
             <Field label="默认主题"><select value={settings.themeMode} onChange={e => changeSetting('themeMode', e.target.value)}><option value="light">浅色</option><option value="dark">深色</option></select></Field>

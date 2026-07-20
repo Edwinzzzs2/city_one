@@ -15,6 +15,9 @@ const PROTECTION_RADIUS_OPTIONS = [1, 2, 3, 4, 5]
 const DEFAULT_CENTER = [116.397428, 39.90923]
 const GEOCODE_BATCH_SIZE = 10
 const GEOCODE_DELAY_MS = 450
+const MAP_SEARCH_CACHE_TTL_MS = 5 * 60 * 1000
+const MAP_SEARCH_COOLDOWN_MS = 1200
+const MAP_SEARCH_CACHE_MAX_ENTRIES = 30
 const MOBILE_MEDIA_QUERY = '(max-width: 720px)'
 const MAP_COLORS = {
   store: '#0f6f62',
@@ -42,7 +45,7 @@ function loadAmap({ key, securityCode }) {
         .load({
           key,
           version: '2.0',
-          plugins: ['AMap.Scale', 'AMap.ToolBar', 'AMap.GeometryUtil'],
+          plugins: ['AMap.Scale', 'AMap.ToolBar', 'AMap.GeometryUtil', 'AMap.PlaceSearch'],
         })
         .then(resolve)
         .catch(reject)
@@ -73,6 +76,86 @@ function loadAmap({ key, securityCode }) {
   })
 
   return amapLoadPromise
+}
+
+function amapText(value) {
+  if (Array.isArray(value)) return value.join('')
+  return value === undefined || value === null ? '' : String(value)
+}
+
+function amapLocationNumber(location, key, index) {
+  if (Array.isArray(location)) return Number(location[index])
+  const getter = key === 'lng' ? location?.getLng : location?.getLat
+  if (typeof getter === 'function') return Number(getter.call(location))
+  return Number(location?.[key])
+}
+
+function normalizeAmapSearchPoi(poi) {
+  const lng = amapLocationNumber(poi?.location, 'lng', 0)
+  const lat = amapLocationNumber(poi?.location, 'lat', 1)
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
+
+  return {
+    id: amapText(poi?.id),
+    name: amapText(poi?.name),
+    type: amapText(poi?.type),
+    address: amapText(poi?.address),
+    province: amapText(poi?.pname || poi?.province),
+    city: amapText(poi?.cityname || poi?.city),
+    district: amapText(poi?.adname || poi?.district),
+    lng,
+    lat,
+  }
+}
+
+function searchPlacesInBrowser(AMap, { keywords, city }) {
+  return new Promise((resolve, reject) => {
+    const runSearch = () => {
+      const placeSearch = new AMap.PlaceSearch({
+        city: city || '全国',
+        citylimit: false,
+        pageSize: 10,
+        pageIndex: 1,
+        extensions: 'base',
+      })
+      placeSearch.search(keywords, (status, result) => {
+        if (status === 'complete') {
+          const pois = (result?.poiList?.pois || []).map(normalizeAmapSearchPoi).filter(Boolean)
+          resolve(pois)
+          return
+        }
+        if (status === 'no_data') {
+          resolve([])
+          return
+        }
+
+        const error = new Error(result?.info || result?.message || '高德地点搜索失败，请稍后重试')
+        error.code = amapText(result?.infocode || status || 'AMAP_SEARCH_ERROR')
+        reject(error)
+      })
+    }
+
+    if (AMap?.PlaceSearch) runSearch()
+    else AMap.plugin('AMap.PlaceSearch', runSearch)
+  })
+}
+
+function reportMapSearchLog(payload) {
+  fetch('/api/place-search/log', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => undefined)
+}
+
+function reportAmapUsage(service) {
+  fetch('/api/amap-usage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ service }),
+    keepalive: true,
+  }).catch(() => undefined)
 }
 
 function formatDistance(distance) {
@@ -284,6 +367,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const infoWindowRef = useRef(null)
   const storeOverlaysRef = useRef([])
   const analysisOverlaysRef = useRef([])
+  const mapSearchCacheRef = useRef(new Map())
+  const lastMapSearchAtRef = useRef(0)
 
   const [mapLoading, setMapLoading] = useState(true)
   const [mapError, setMapError] = useState('')
@@ -447,6 +532,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
         mapRef.current = map
         setMapReady(true)
+        reportAmapUsage('map_init')
       } catch (e) {
         setMapError(e.message)
       } finally {
@@ -844,22 +930,42 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       return
     }
 
+    const now = Date.now()
+    if (now - lastMapSearchAtRef.current < MAP_SEARCH_COOLDOWN_MS) {
+      message.warning('搜索太频繁，请稍后再试')
+      return
+    }
+    lastMapSearchAtRef.current = now
+
+    const city = selectedPoint?.city || (searchMode === 'city' ? searchQuery : '')
+    const cacheKey = `${city}\n${keywords}`.toLowerCase()
+    const cached = mapSearchCacheRef.current.get(cacheKey)
+
     setMapSearchText(keywords)
     setMapSearchLoading(true)
+    const startedAt = Date.now()
     try {
-      const response = await fetch('/api/place-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywords,
-          city: selectedPoint?.city || (searchMode === 'city' ? searchQuery : ''),
-          offset: 10,
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok || !data.ok) throw new Error(data.error || '地图搜索失败')
+      const cacheHit = cached && Date.now() - cached.createdAt < MAP_SEARCH_CACHE_TTL_MS
+      const AMap = amapRef.current || await loadAmap({ key: amapKey, securityCode: amapSecurityCode })
+      const results = cacheHit
+        ? cached.results
+        : await searchPlacesInBrowser(AMap, { keywords, city })
 
-      const results = data.pois || []
+      if (!cacheHit) {
+        if (mapSearchCacheRef.current.size >= MAP_SEARCH_CACHE_MAX_ENTRIES) {
+          const oldestKey = mapSearchCacheRef.current.keys().next().value
+          mapSearchCacheRef.current.delete(oldestKey)
+        }
+        mapSearchCacheRef.current.set(cacheKey, { createdAt: Date.now(), results })
+        reportMapSearchLog({
+          keywords,
+          city,
+          status: 'success',
+          resultCount: results.length,
+          durationMs: Date.now() - startedAt,
+        })
+      }
+
       setMapSearchResults(results)
       trackEvent(readableEventName(selectedPoint ? '定点搜索' : '地图搜索', keywords), {
         event_type: 'map_search',
@@ -867,7 +973,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         query: keywords,
         query_length: keywords.length,
         result_count: results.length,
-        city_scope: selectedPoint?.city || (searchMode === 'city' ? searchQuery : ''),
+        city_scope: city,
+        cache_hit: Boolean(cacheHit),
       })
       if (results.length === 0) {
         message.warning('没有找到地图候选点')
@@ -875,6 +982,14 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       }
     } catch (e) {
       setMapSearchResults([])
+      reportMapSearchLog({
+        keywords,
+        city,
+        status: 'error',
+        durationMs: Date.now() - startedAt,
+        errorMessage: e?.message || '高德地点搜索失败',
+        errorCode: e?.code || e?.name || 'AMAP_SEARCH_ERROR',
+      })
       trackEvent(readableEventName(selectedPoint ? '定点搜索失败' : '地图搜索失败', keywords), {
         event_type: 'map_search_error',
         context: selectedPoint ? 'relocate' : 'distance_check',
@@ -885,7 +1000,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     } finally {
       setMapSearchLoading(false)
     }
-  }, [message, searchMode, searchQuery, selectedPoint])
+  }, [amapKey, amapSecurityCode, message, searchMode, searchQuery, selectedPoint])
 
   const searchSelectedPointAddress = useCallback(() => {
     if (!selectedPoint) return
