@@ -9,6 +9,7 @@ const RETRYABLE_LIMIT_ERRORS = new Set([
   'QPS_HAS_EXCEEDED_THE_LIMIT',
   'USER_VISIT_TOO_FREQUENTLY',
 ])
+const MISSING_LOCATION = '(lng IS NULL OR lat IS NULL OR (lng = 0 AND lat = 0))'
 
 function clampBatchSize(value) {
   const number = Number(value)
@@ -70,7 +71,7 @@ export async function POST(request) {
     const pending = await query(
       `SELECT id, province, city, district, address
        FROM city_addresses
-       WHERE (lng IS NULL OR lat IS NULL)
+       WHERE ${MISSING_LOCATION}
          AND COALESCE(address, '') <> ''
          ${failedFilter}
        ORDER BY id
@@ -143,7 +144,7 @@ export async function POST(request) {
     const remaining = await query(
       `SELECT COUNT(*)::int AS count
        FROM city_addresses
-       WHERE (lng IS NULL OR lat IS NULL)
+       WHERE ${MISSING_LOCATION}
          AND COALESCE(address, '') <> ''
          ${failedFilter}`
     )
