@@ -6,7 +6,11 @@ const MAP_LIMIT = 20000
 const LIST_LIMIT = 1000
 
 function toCoordinate(value) {
-  const number = Number(String(value ?? '').trim())
+  const text = String(value ?? '').trim()
+  // Number('') 会得到 0，空坐标必须先拦截，否则会被误判为已落点。
+  if (!text) return null
+
+  const number = Number(text)
   return Number.isFinite(number) ? number : null
 }
 
