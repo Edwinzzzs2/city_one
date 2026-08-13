@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/auth'
 import { getSystemSettings, setSettings } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 const MASK = '********'
 const SECRET_FIELDS = ['apiKey', 'amapSecurityCode', 'amapWebServiceKey']
 const KEY_MAP = {

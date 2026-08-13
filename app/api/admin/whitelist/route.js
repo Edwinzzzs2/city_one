@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getAdminUser, normalizeUsername } from '@/lib/auth'
 import { query } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ ok: false, error: '需要管理员权限' }, { status: 403 })

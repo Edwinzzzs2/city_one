@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getAISettings, setSetting } from '@/lib/db'
 import { getAdminUser, getAppUser } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+
 const MASKED_KEY = '********'
 
 function publicSettings(settings) {
