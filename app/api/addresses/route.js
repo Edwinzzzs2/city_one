@@ -4,6 +4,9 @@ import { getAppUser } from '@/lib/auth'
 
 const MAP_LIMIT = 20000
 const LIST_LIMIT = 1000
+// 旧版曾把空坐标写成 0,0；查询层也要把它视为缺失，避免依赖一次性数据清理。
+const MISSING_LOCATION = '(lng IS NULL OR lat IS NULL OR (lng = 0 AND lat = 0))'
+const LOCATED_LOCATION = '(lng IS NOT NULL AND lat IS NOT NULL AND NOT (lng = 0 AND lat = 0))'
 
 function toCoordinate(value) {
   const text = String(value ?? '').trim()
@@ -51,15 +54,15 @@ function appendCondition(where, condition) {
 }
 
 function getListWhere(where, listMode) {
-  if (listMode === 'missing') return appendCondition(where, '(lng IS NULL OR lat IS NULL)')
+  if (listMode === 'missing') return appendCondition(where, MISSING_LOCATION)
   if (listMode === 'manual') return appendCondition(where, "(geocode_status = 'manual_map' OR geocode_status = 'manual')")
   if (listMode === 'all') return where
-  return appendCondition(where, 'lng IS NOT NULL AND lat IS NOT NULL')
+  return appendCondition(where, LOCATED_LOCATION)
 }
 
 async function getMapRows({ q, city, listMode = 'located' }) {
   const { where, params } = buildSearchFilter({ q, city })
-  const mapWhere = appendCondition(where, 'lng IS NOT NULL AND lat IS NOT NULL')
+  const mapWhere = appendCondition(where, LOCATED_LOCATION)
   const listWhere = getListWhere(where, listMode)
 
   const baseSelect = `
@@ -71,8 +74,8 @@ async function getMapRows({ q, city, listMode = 'located' }) {
     query(
       `SELECT
          COUNT(*)::int AS total,
-         CAST(COUNT(*) FILTER (WHERE lng IS NOT NULL AND lat IS NOT NULL) AS int) AS located,
-         CAST(COUNT(*) FILTER (WHERE lng IS NULL OR lat IS NULL) AS int) AS missing,
+         CAST(COUNT(*) FILTER (WHERE ${LOCATED_LOCATION}) AS int) AS located,
+         CAST(COUNT(*) FILTER (WHERE ${MISSING_LOCATION}) AS int) AS missing,
          CAST(COUNT(*) FILTER (WHERE geocode_status = 'manual_map' OR geocode_status = 'manual') AS int) AS manual
        FROM city_addresses
        ${where}`,
@@ -91,7 +94,7 @@ async function getMapRows({ q, city, listMode = 'located' }) {
        FROM city_addresses
        ${listWhere}
        ORDER BY
-         CASE WHEN lng IS NULL OR lat IS NULL THEN 0 ELSE 1 END,
+         CASE WHEN ${MISSING_LOCATION} THEN 0 ELSE 1 END,
          province, city, district, id
        LIMIT ${LIST_LIMIT}`,
       params

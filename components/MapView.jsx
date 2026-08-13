@@ -109,7 +109,8 @@ function canAutoLocate(row = {}) {
 }
 
 function isValidCoordinate(lng, lat) {
-  return Number.isFinite(lng) && Number.isFinite(lat)
+  // 0,0 是旧版空坐标的脏值，不能作为真实地图点位参与展示和距离计算。
+  return Number.isFinite(lng) && Number.isFinite(lat) && !(lng === 0 && lat === 0)
 }
 
 function isBlankCoordinate(value) {
