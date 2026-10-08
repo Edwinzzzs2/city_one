@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "supabase:keepalive": "node --env-file=.env.supabase-keepalive.local scripts/supabase-keepalive.cjs"
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
