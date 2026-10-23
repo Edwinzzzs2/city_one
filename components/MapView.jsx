@@ -292,7 +292,8 @@ function markerLabelContent(type, badge, point = {}) {
       <em>${escapeHtml(badge)}</em>
       <strong>${escapeHtml(name)}</strong>
       <span>${escapeHtml(region)}</span>
-      <small>${escapeHtml(address)}</small>
+      <small>${point.isAdjusted ? '参考地址：' : ''}${escapeHtml(address)}</small>
+      ${point.isAdjusted ? `<small>微调坐标：${Number(point.lng).toFixed(6)}, ${Number(point.lat).toFixed(6)}</small>` : ''}
     </div>
   `
 }
@@ -633,6 +634,24 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     })
   }, [])
 
+  const handleCheckPointDragEnd = useCallback((event) => {
+    const lng = amapLocationNumber(event.lnglat, 'lng', 0)
+    const lat = amapLocationNumber(event.lnglat, 'lat', 1)
+    if (!isValidCoordinate(lng, lat)) return
+
+    // 松手后再更新草稿，避免拖动过程中重建标记中断操作；门店仍需点击保存才会写入。
+    const setPoint = isManualDraft ? setManualPoint : setNewPoint
+    setPoint(point => point ? {
+      ...point,
+      lng,
+      lat,
+      isAdjusted: true,
+      // 原搜索地址只作参考，不能把它当成微调坐标的精确解析地址保存。
+      formattedAddress: '',
+    } : null)
+    infoWindowRef.current?.close()
+  }, [isManualDraft])
+
   useEffect(() => {
     const map = mapRef.current
     const AMap = amapRef.current
@@ -688,6 +707,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     }
   }, [bindMarkerInfo, clearOverlays, mapReady, points, protectionRadiusMeters, selectPoint, selectedPoint, showProtection])
 
+  // SONAR-REVIEW: 待复扫 / javascript:S3776：分析覆盖物回调分支较多，人工估算超15；请研发确认是否修改。
   useEffect(() => {
     const map = mapRef.current
     const AMap = amapRef.current
@@ -699,13 +719,19 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     let fitFrame = null
 
     if (activeCheckPoint) {
+      // SONAR-REVIEW: 待复扫 / javascript:S3358：标记颜色判断包含嵌套三元；请研发确认是否修改。
       const activeMarker = new AMap.Marker({
         position: [activeCheckPoint.lng, activeCheckPoint.lat],
-        title: isManualDraft ? '门店定点' : '新点位',
+        title: '拖动此点微调位置',
+        draggable: true,
+        cursor: 'move',
+        bubble: false,
         offset: new AMap.Pixel(-10, -10),
         content: markerContent(isManualDraft ? 'draft' : isConflict ? 'danger' : 'new'),
         zIndex: 170,
       })
+      activeMarker.on('dragstart', () => infoWindowRef.current?.close())
+      activeMarker.on('dragend', handleCheckPointDragEnd)
       bindMarkerInfo(activeMarker, {
         ...selectedPoint,
         ...activeCheckPoint,
@@ -715,11 +741,12 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       })
       overlays.push(activeMarker)
       fitTargets.push(activeMarker)
-      overlays.push(new AMap.Marker({
+      // SONAR-REVIEW: 待复扫 / javascript:S3358：标签颜色判断包含嵌套三元；请研发确认是否修改。
+      const activeLabel = new AMap.Marker({
         position: [activeCheckPoint.lng, activeCheckPoint.lat],
         content: markerLabelContent(
           isManualDraft ? 'draft' : isConflict ? 'danger' : 'new',
-          isManualDraft ? '待定点' : '搜索点',
+          `${isManualDraft ? '待定点' : '搜索点'} · 可拖动微调`,
           {
             ...selectedPoint,
             ...activeCheckPoint,
@@ -730,7 +757,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         ),
         offset: new AMap.Pixel(0, 0),
         zIndex: 190,
-      }))
+      })
+      // 标签跟随标记移动，距离与最近门店在松手后统一重算。
+      activeMarker.on('dragging', event => activeLabel.setPosition(event.lnglat))
+      overlays.push(activeLabel)
     }
 
     if (activeCheckPoint && nearest?.point) {
@@ -782,7 +812,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (overlays.length === 0) return
     map.add(overlays)
     analysisOverlaysRef.current = overlays
-    if (activeCheckPoint && nearest?.point && fitTargets.length > 1) {
+    // 微调后保留用户当前视野，避免每次松手都重新缩放，影响连续调整。
+    if (activeCheckPoint && !activeCheckPoint.isAdjusted && nearest?.point && fitTargets.length > 1) {
       fitFrame = window.requestAnimationFrame(() => {
         map.setFitView(fitTargets, true, [180, 90, 140, 90], 16)
       })
@@ -791,7 +822,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     return () => {
       if (fitFrame) window.cancelAnimationFrame(fitFrame)
     }
-  }, [activeCheckPoint, bindMarkerInfo, clearOverlays, isConflict, isManualDraft, mapReady, nearest, protectionRadiusMeters, selectedPoint])
+  }, [activeCheckPoint, bindMarkerInfo, clearOverlays, handleCheckPointDragEnd, isConflict, isManualDraft, mapReady, nearest, protectionRadiusMeters, selectedPoint])
 
   const saveLocation = useCallback(async (row, point, options = {}) => {
     if (!row?.id || !point) return null
@@ -912,7 +943,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         poi_address: [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join(''),
         poi_city: poi.city,
       })
-      message.success('已定位为待保存点，保存后会写入该门店')
+      message.success('已定位为待保存点，可拖动微调，点击保存后写入该门店')
       return
     }
 
@@ -926,7 +957,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       poi_address: [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join(''),
       poi_city: poi.city,
     })
-    message.success('已作为搜索点进行距离校验')
+    message.success('已作为搜索点进行距离校验，可拖动微调位置')
   }, [mapSearchText, message, selectedPoint])
 
   const clearMapSearchState = useCallback(() => {
@@ -956,6 +987,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     }
   }, [manualPoint, selectedPoint])
 
+  // SONAR-REVIEW: 待复扫 / javascript:S3776：搜索重试回调分支较多，人工估算超15；请研发确认是否修改。
   const handleMapSearch = useCallback(async (value) => {
     const keywords = String(value ?? '').trim()
     if (!keywords) {
@@ -1004,6 +1036,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             duration: 0,
           })
           await waitFor(retryDelay)
+          // SONAR-REVIEW: 待复扫 / javascript:S134：重试try处于第四层控制流嵌套；请研发确认是否修改。
           try {
             results = await searchPlacesInBrowser(AMap, { keywords, city })
           } finally {
@@ -1039,7 +1072,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         cache_hit: Boolean(cacheHit),
       })
       if (results.length === 0) {
-        message.warning('没有找到地图候选点')
+        message.warning('没有找到地图候选点，可以搜索附近地标后拖动微调')
         return
       }
     } catch (e) {
@@ -1128,6 +1161,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     }
   }, [isAdmin, loadPoints, message, summary.missing])
 
+  // SONAR-REVIEW: 待复扫 / javascript:S3358：列表状态和空态提示包含嵌套三元；请研发确认是否修改。
   return (
     <section className="map-view">
       <aside className="map-side">

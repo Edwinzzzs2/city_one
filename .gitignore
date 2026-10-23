@@ -29,5 +29,6 @@ pnpm-debug.log*
 
 # temporary files
 *.log
+.qoder/sonar-review-ledger.json
 
 .next/
