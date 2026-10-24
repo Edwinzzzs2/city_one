@@ -6,9 +6,10 @@ print_usage() {
 Usage:
   ./deploy.sh [options]
 
+Updates the current branch from its configured upstream without switching branches.
+
 Options:
   --app-dir <path>             Project directory (default: directory of this script)
-  --branch <name>              Deploy a specific git branch (default: current branch)
   --service <1panel|command|supervisor|docker|pm2|systemd>
                                Restart method (default: command)
   --runtime-name <name>        1Panel runtime name, required when --service 1panel
@@ -156,7 +157,6 @@ restart_1panel_runtime() {
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${APP_DIR:-$SCRIPT_DIR}"
 
-BRANCH=""
 SERVICE_TYPE="${SERVICE_TYPE:-command}"
 PANEL_RUNTIME_NAME="${PANEL_RUNTIME_NAME:-}"
 PANEL_RUNTIME_TYPE="${PANEL_RUNTIME_TYPE:-node}"
@@ -185,9 +185,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --branch)
-      BRANCH="${2:-}"
-      [[ -n "$BRANCH" ]] || die "--branch requires a value"
-      shift 2
+      die "--branch is no longer supported. Remove this option; deploy.sh only updates the current branch."
       ;;
     --service)
       SERVICE_TYPE="${2:-}"
@@ -309,29 +307,23 @@ if [[ $ALLOW_DIRTY -eq 0 ]]; then
 fi
 
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-TARGET_BRANCH="$CURRENT_BRANCH"
-if [[ -n "$BRANCH" ]]; then
-  TARGET_BRANCH="$BRANCH"
-fi
 
 OLD_REV="$(git rev-parse HEAD)"
 NEW_REV="$OLD_REV"
 
 log "Repository: $REPO_DIR"
-log "Branch: $TARGET_BRANCH"
+log "Branch: $CURRENT_BRANCH"
 log "Service type: $SERVICE_TYPE"
 
 if [[ $RESTART_ONLY -eq 0 && $SKIP_PULL -eq 0 ]]; then
+  [[ "$CURRENT_BRANCH" != "HEAD" ]] || die "HEAD is detached. Check out the branch to deploy before running deploy.sh."
+
   log "Fetching latest code..."
   git fetch --all --prune
 
-  if [[ "$CURRENT_BRANCH" != "$TARGET_BRANCH" ]]; then
-    log "Checking out branch: $TARGET_BRANCH"
-    git checkout "$TARGET_BRANCH"
-  fi
-
-  log "Pulling latest commits..."
-  git pull --ff-only origin "$TARGET_BRANCH"
+  # 跟随当前分支已配置的上游更新，不切换分支，也不自动合并分叉历史。
+  log "Pulling latest commits for current branch: $CURRENT_BRANCH"
+  git pull --ff-only
   NEW_REV="$(git rev-parse HEAD)"
 else
   log "Skipping git pull"
