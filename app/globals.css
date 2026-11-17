@@ -344,13 +344,15 @@ textarea {
 }
 
 .app-main {
-  padding-top: calc(var(--app-header-height) + 25px);
-  padding-bottom: max(40px, env(safe-area-inset-bottom));
+  --app-content-gap: 25px;
+  --app-content-bottom: max(40px, env(safe-area-inset-bottom));
+  padding-top: calc(var(--app-header-height) + var(--app-content-gap));
+  padding-bottom: var(--app-content-bottom);
 }
 
 .app-shell--map .app-main {
-  padding-top: calc(var(--app-header-height) + 16px);
-  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  --app-content-gap: 16px;
+  --app-content-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 .overview-panel {
@@ -513,8 +515,9 @@ textarea {
 
 @media (max-width: 720px) {
   :root {
+    --app-toolbar-height: 52px;
     --app-gutter: 16px;
-    --app-search-row-height: 48px;
+    --app-search-row-height: 50px;
   }
 
   .app-shell--list {
@@ -531,6 +534,7 @@ textarea {
 
   .brand-block {
     grid-area: 1 / 1;
+    gap: 8px;
   }
 
   .header-actions {
@@ -539,7 +543,7 @@ textarea {
 
   .header-search {
     grid-area: 2 / 1 / auto / -1;
-    align-self: start;
+    align-self: center;
     width: 100%;
     max-width: none;
     min-height: 42px;
@@ -560,23 +564,26 @@ textarea {
   }
 
   .app-main {
-    padding-top: calc(var(--app-header-height) + 16px);
+    --app-content-gap: 12px;
+    --app-content-bottom: max(28px, env(safe-area-inset-bottom));
+    --app-province-index-gutter: 28px;
   }
 
   .app-shell--map .app-main {
     --app-gutter: 10px;
-    padding-top: calc(var(--app-header-height) + 10px);
+    --app-content-gap: 10px;
+    --app-content-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
   .overview-panel {
-    min-height: 176px;
-    margin-bottom: 24px;
-    padding: 21px 20px;
+    min-height: 168px;
+    margin-bottom: 20px;
+    padding: 17px 18px;
     border-radius: 20px;
   }
 
   .app-main:has(.city-grid-wrap--indexed) .overview-panel {
-    margin-inline-end: 27px;
+    margin-inline-end: var(--app-province-index-gutter);
   }
 
   .overview-panel::after {
@@ -598,7 +605,7 @@ textarea {
 
   .overview-stats {
     gap: 15px;
-    margin-top: 16px;
+    margin-top: 14px;
   }
 
   .overview-stats > div + div {
@@ -668,19 +675,6 @@ textarea {
       background: var(--surface);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
-    }
-  }
-
-  @media (display-mode: standalone) and (max-width: 720px) {
-    :root {
-      /* Keep the compact toolbar controls at the tested distance below the iOS edge blur. */
-      --app-header-inset-top: calc(env(safe-area-inset-top, 0px) + 30px);
-      --app-toolbar-height: 44px;
-      --app-search-row-height: 46px;
-    }
-
-    .header-search {
-      align-self: center;
     }
   }
 }

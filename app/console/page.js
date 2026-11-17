@@ -334,7 +334,7 @@ function ConsolePageContent() {
       )}
       <aside className={styles.sidebar}>
         <a className={styles.brand} href="/" aria-label="返回地址台账">
-          <img src="/icon-campus-192.png" alt="" width={38} height={38} />
+          <img src="/icon-folded-map-192.png" alt="" width={38} height={38} />
           <div><strong>校区地址台账</strong><span>管理控制台</span></div>
         </a>
         <button

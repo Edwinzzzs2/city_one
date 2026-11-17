@@ -53,7 +53,7 @@ export default function LoginPage() {
       <section className={styles.card} aria-labelledby="auth-title">
         <header className={styles.cardHead}>
           <div className={styles.brand}>
-            <img src="/icon-campus-192.png" alt="" width={56} height={56} />
+            <img src="/icon-folded-map-192.png" alt="" width={56} height={56} />
             <span>校区地址台账</span>
           </div>
           <h1 id="auth-title">{isLogin ? '登录' : '创建账号'}</h1>

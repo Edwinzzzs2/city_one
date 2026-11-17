@@ -180,7 +180,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout }) {
       <header className="app-header">
         <div className="app-header-inner">
           <div className="brand-block">
-            <img className="brand-icon" src="/icon-campus-192.png" width="36" height="36" alt="" />
+            <img className="brand-icon" src="/icon-folded-map-192.png" width="36" height="36" alt="" />
             <span>校区地址</span>
           </div>
 

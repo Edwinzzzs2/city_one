@@ -1137,19 +1137,27 @@ button.map-stat-card:hover {
 @media (max-width: 720px) {
   .city-grid-wrap--indexed {
     display: block;
-    padding-inline-end: 27px;
+    padding-inline-end: var(--app-province-index-gutter);
   }
 
   .province-sections {
-    gap: 21px;
+    gap: 20px;
+  }
+
+  .province-section {
+    scroll-margin-top: calc(var(--app-header-height) + var(--app-content-gap));
+  }
+
+  .province-heading {
+    margin-bottom: 10px;
   }
 
   .province-index {
     position: fixed;
-    top: calc(var(--app-header-height, 113px) + 12px);
+    top: calc(var(--app-header-height) + var(--app-content-gap));
     right: max(4px, env(safe-area-inset-right));
     width: 25px;
-    max-height: calc(100dvh - var(--app-header-height, 113px) - env(safe-area-inset-bottom) - 24px);
+    max-height: calc(100dvh - var(--app-header-height) - var(--app-content-gap) - max(12px, env(safe-area-inset-bottom)));
     padding: 4px 3px;
     box-shadow: var(--shadow);
   }
@@ -1177,8 +1185,12 @@ button.map-stat-card:hover {
     pointer-events: none;
   }
 
+  .search-results-head {
+    margin-bottom: 14px;
+  }
+
   .map-view {
-    --map-height: max(360px, calc(100dvh - var(--app-header-height, 65px) - 10px - max(16px, env(safe-area-inset-bottom))));
+    --map-height: max(360px, calc(100dvh - var(--app-header-height) - var(--app-content-gap) - var(--app-content-bottom)));
     display: block;
   }
 
