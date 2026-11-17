@@ -22,7 +22,8 @@
   --overview-start: #fcfdff;
   --overview-end: #e6f0fc;
   --overview-border: #dce8f5;
-  --app-header-height: calc(65px + env(safe-area-inset-top));
+  --app-header-inset-top: env(safe-area-inset-top, 0px);
+  --app-header-height: calc(65px + var(--app-header-inset-top));
   --app-content-width: 1280px;
   --app-gutter: 32px;
 }
@@ -114,7 +115,7 @@ textarea {
   position: fixed;
   inset: 0 0 auto;
   z-index: 200;
-  padding-top: env(safe-area-inset-top);
+  padding-top: var(--app-header-inset-top);
   background: var(--header-bg);
   border-bottom: 1px solid var(--border);
   -webkit-backdrop-filter: saturate(155%) blur(22px);
@@ -439,7 +440,7 @@ textarea {
 
 .pull-refresh {
   position: fixed;
-  top: calc(env(safe-area-inset-top) + 8px);
+  top: calc(var(--app-header-inset-top) + 8px);
   left: 50%;
   z-index: 320;
   transform: translate(-50%, calc(-48px + var(--pull-distance, 0px)));
@@ -512,11 +513,11 @@ textarea {
 @media (max-width: 720px) {
   :root {
     --app-gutter: 16px;
-    --app-header-height: calc(113px + env(safe-area-inset-top));
+    --app-header-height: calc(113px + var(--app-header-inset-top));
   }
 
   .app-shell--map {
-    --app-header-height: calc(65px + env(safe-area-inset-top));
+    --app-header-height: calc(65px + var(--app-header-inset-top));
   }
 
   .app-header-inner {
@@ -657,6 +658,23 @@ textarea {
 @media (max-width: 340px) {
   .brand-block > span {
     display: none;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    .app-header {
+      background: var(--surface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  @media (display-mode: standalone) and (max-width: 720px) {
+    :root {
+      /* iOS can blur below the reported safe area in installed web apps. */
+      --app-header-inset-top: calc(env(safe-area-inset-top, 0px) + 20px);
+    }
   }
 }
 

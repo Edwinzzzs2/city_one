@@ -18,10 +18,9 @@ export const metadata = {
     ],
     apple: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' }],
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: '校区地址',
+  appleWebApp: true,
+  other: {
+    'apple-mobile-web-app-title': '校区地址',
   },
 }
 
