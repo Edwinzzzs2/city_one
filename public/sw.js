@@ -1,11 +1,10 @@
 const CACHE_PREFIX = 'city-one-static-'
-const CACHE_NAME = `${CACHE_PREFIX}v2`
+const CACHE_NAME = `${CACHE_PREFIX}v3`
 const PRECACHE_URLS = [
   '/offline.html',
   '/manifest.json',
-  '/icon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
+  '/icon-campus-192.png',
+  '/icon-campus-512.png',
 ]
 
 self.addEventListener('install', (event) => {

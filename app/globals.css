@@ -22,8 +22,9 @@
   --overview-start: #fcfdff;
   --overview-end: #e6f0fc;
   --overview-border: #dce8f5;
+  --app-toolbar-height: 64px;
   --app-header-inset-top: env(safe-area-inset-top, 0px);
-  --app-header-height: calc(65px + var(--app-header-inset-top));
+  --app-header-height: calc(var(--app-toolbar-height) + var(--app-header-inset-top) + 1px);
   --app-content-width: 1280px;
   --app-gutter: 32px;
 }
@@ -131,7 +132,7 @@ textarea {
 }
 
 .app-header-inner {
-  min-height: 64px;
+  min-height: var(--app-toolbar-height);
   display: flex;
   align-items: center;
   gap: clamp(14px, 3vw, 38px);
@@ -513,18 +514,18 @@ textarea {
 @media (max-width: 720px) {
   :root {
     --app-gutter: 16px;
-    --app-header-height: calc(113px + var(--app-header-inset-top));
+    --app-search-row-height: 48px;
   }
 
-  .app-shell--map {
-    --app-header-height: calc(65px + var(--app-header-inset-top));
+  .app-shell--list {
+    --app-header-height: calc(var(--app-toolbar-height) + var(--app-search-row-height) + var(--app-header-inset-top) + 1px);
   }
 
   .app-header-inner {
     min-height: auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: 64px 48px;
+    grid-template-rows: var(--app-toolbar-height) var(--app-search-row-height);
     gap: 0 8px;
   }
 
@@ -551,7 +552,7 @@ textarea {
   }
 
   .app-shell--map .app-header-inner {
-    grid-template-rows: 64px;
+    grid-template-rows: var(--app-toolbar-height);
   }
 
   .app-shell--map .header-search {
@@ -667,6 +668,19 @@ textarea {
       background: var(--surface);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
+    }
+  }
+
+  @media (display-mode: standalone) and (max-width: 720px) {
+    :root {
+      /* Keep the compact toolbar controls at the tested distance below the iOS edge blur. */
+      --app-header-inset-top: calc(env(safe-area-inset-top, 0px) + 30px);
+      --app-toolbar-height: 44px;
+      --app-search-row-height: 46px;
+    }
+
+    .header-search {
+      align-self: center;
     }
   }
 }
