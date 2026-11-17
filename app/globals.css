@@ -669,13 +669,6 @@ textarea {
       backdrop-filter: none;
     }
   }
-
-  @media (display-mode: standalone) and (max-width: 720px) {
-    :root {
-      /* iOS can blur below the reported safe area in installed web apps. */
-      --app-header-inset-top: calc(env(safe-area-inset-top, 0px) + 20px);
-    }
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
