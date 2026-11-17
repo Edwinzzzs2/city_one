@@ -1,11 +1,10 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { Modal, Form, Input, Select, Slider, Button, Alert, Divider, Space } from 'antd'
+import { useEffect, useState } from 'react'
+import { Alert, App, Form, Input, Modal, Select, Slider } from 'antd'
 import { SettingOutlined, KeyOutlined, LinkOutlined } from '@ant-design/icons'
 import useDataStore from '@/store/useDataStore'
 import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
 import { readableEventName, trackEvent } from '@/utils/analytics'
-import { App } from 'antd'
 const PRESET_MODELS = ['gpt-5.5','gpt-5.4','gpt-5.2-pro','gpt-5.2','gpt-5.4-mini','gpt-4o','gpt-4o-mini']
 
 
@@ -46,28 +45,40 @@ export default function SettingsModal({ open, onClose }) {
 
   return (
     <Modal
-      title={<Space><SettingOutlined style={{ color: 'var(--color-primary-light)' }} /><span style={{ color: 'var(--text-primary)' }}>AI 配置</span></Space>}
-      open={open} onCancel={onClose} onOk={handleOk} okText="保存" cancelText="取消" width={420}
+      title={(
+        <div className="dialog-title">
+          <span className="dialog-title-icon"><SettingOutlined aria-hidden="true" /></span>
+          <span>AI 配置</span>
+        </div>
+      )}
+      open={open}
+      onCancel={onClose}
+      onOk={handleOk}
+      okText="保存"
+      cancelText="取消"
+      width={460}
+      centered
       confirmLoading={saving}
-      className="settings-modal"
-      wrapClassName="app-modal-wrap"
+      className="apple-dialog"
+      classNames={{ wrapper: 'apple-dialog-wrap', mask: 'apple-dialog-mask' }}
     >
       <Alert
-        style={{ marginBottom: 14, marginTop: 4 }}
-        message="配置保存到数据库，密钥仅服务端使用。"
-        type="info" showIcon
+        className="dialog-notice"
+        message="配置保存在服务端，API 密钥仅供服务端调用。"
+        type="info"
+        showIcon
       />
-      <Form form={form} layout="vertical" initialValues={settings} requiredMark={false}>
+      <Form className="settings-form" form={form} layout="vertical" initialValues={settings} requiredMark={false} size="large">
         <Form.Item
-          label={<span style={{ color: 'var(--text-secondary)' }}>API 接入地址</span>}
-          name="apiBaseUrl" rules={[{ required: true, message: '请填写 API 地址' }]}
-          extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>例：https://your.sub2api.com/v1</span>}
+          label="API 接入地址"
+          name="apiBaseUrl"
+          rules={[{ required: true, message: '请填写 API 地址' }]}
         >
-          <Input prefix={<LinkOutlined />} placeholder="https://your.sub2api.com/v1" size="middle" />
+          <Input prefix={<LinkOutlined />} placeholder="https://your.sub2api.com/v1" inputMode="url" />
         </Form.Item>
 
         <Form.Item
-          label={<span style={{ color: 'var(--text-secondary)' }}>API 密钥</span>}
+          label="API 密钥"
           name="apiKey"
           rules={[
             {
@@ -77,22 +88,20 @@ export default function SettingsModal({ open, onClose }) {
               },
             },
           ]}
-          extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>显示为 ********；重新输入可覆盖。</span>}
+          extra={settings.hasApiKey ? '已保存密钥。输入新密钥即可替换。' : undefined}
         >
-          <Input.Password prefix={<KeyOutlined />} placeholder="sk-xxxxxxxxxxxxxxxx" size="middle" />
+          <Input.Password prefix={<KeyOutlined />} placeholder="sk-xxxxxxxxxxxxxxxx" autoComplete="off" />
         </Form.Item>
 
-        <Form.Item label={<span style={{ color: 'var(--text-secondary)' }}>模型</span>} name="model">
+        <Form.Item label="模型" name="model">
           <Select showSearch options={PRESET_MODELS.map(m => ({ label: m, value: m }))} />
         </Form.Item>
 
-        <Divider style={{ borderColor: 'var(--color-border)', margin: '8px 0 12px' }} />
-
         <Form.Item
-          label={<span style={{ color: 'var(--text-secondary)' }}>每批条数 ({batchVal} 条)</span>}
-          extra={<span style={{ color: 'var(--text-muted)', fontSize: 12 }}>建议 30-50。</span>}
+          label={`每批 ${batchVal} 条`}
+          extra="建议每批 30 至 50 条。"
         >
-          <Slider min={10} max={100} step={10} value={batchVal} onChange={setBatchVal} />
+          <Slider ariaLabelForHandle="每批条数" min={10} max={100} step={10} value={batchVal} onChange={setBatchVal} />
         </Form.Item>
       </Form>
     </Modal>

@@ -22,8 +22,8 @@ export function renderHighlight(text, query, React) {
     React.createElement('mark', {
       key: 'h',
       style: {
-        background: 'color-mix(in srgb,var(--color-primary) 18%,transparent)',
-        color: 'var(--color-primary-light)',
+        background: 'var(--accent-soft)',
+        color: 'var(--accent)',
         borderRadius: 3,
         padding: '0 2px',
         fontWeight: 700,

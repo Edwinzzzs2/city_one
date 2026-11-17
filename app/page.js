@@ -1,11 +1,12 @@
 'use client'
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { ConfigProvider, theme, Button, Input, Tooltip, Space, App, Segmented } from 'antd'
+import { App, Segmented } from 'antd'
 import {
-  SearchOutlined, DatabaseOutlined, MoonOutlined, SunOutlined,
+  SearchOutlined, DownOutlined, CloseCircleFilled, MoonOutlined, SunOutlined,
   UnorderedListOutlined, EnvironmentOutlined, LogoutOutlined,
-  CrownOutlined, UserOutlined,
+  SettingOutlined, UserOutlined,
 } from '@ant-design/icons'
+import AppTheme from '@/components/AppTheme'
 import useDataStore from '@/store/useDataStore'
 import CityGrid from '@/components/CityGrid'
 import SearchResults from '@/components/SearchResults'
@@ -16,7 +17,7 @@ const PULL_REFRESH_TRIGGER = 68
 const PULL_REFRESH_MAX = 96
 const PULL_REFRESH_IGNORED_SELECTOR = '.ant-modal-root,.ant-drawer,.ant-select-dropdown,.map-stage,.map-search-panel,.amap-container'
 
-function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
+function MainApp({ themeMode, onToggleTheme, user, onLogout }) {
   const { message } = App.useApp()
 
   const [searchQ, setSearchQ] = useState('')
@@ -28,6 +29,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
   const [searchLoading, setSearchLoading] = useState(false)
   const [pullRefresh, setPullRefresh] = useState({ distance: 0, refreshing: false })
   const shellRef = useRef(null)
+  const searchInputRef = useRef(null)
   const pullStartY = useRef(0)
   const pullTracking = useRef(false)
   const searchTerm = searchQ.trim()
@@ -48,7 +50,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
     } finally {
       if (!silent) setStatsLoading(false)
     }
-  }, [])
+  }, [message])
 
   useEffect(() => { loadStats() }, [loadStats])
 
@@ -93,6 +95,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
       return
     }
 
+    setSearchLoading(true)
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
       fetchSearchResults(searchTerm, searchMode, controller.signal)
@@ -152,7 +155,9 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
   }, [pullRefresh.distance, refreshPageData])
 
   const totalCities = new Set(stats.map(r => r.city).filter(Boolean)).size
-  const totalRows = stats.reduce((s, r) => s + parseInt(r.count || 0), 0)
+  const totalRows = stats.reduce((sum, row) => sum + (Number(row.count) || 0), 0)
+  const themeLabel = themeMode === 'dark' ? '切换浅色模式' : '切换深色模式'
+  const showAccount = !user.isGuest
 
   return (
     <div
@@ -168,58 +173,57 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
           className={`pull-refresh${pullRefresh.refreshing ? ' is-refreshing' : ''}${pullRefresh.distance >= PULL_REFRESH_TRIGGER ? ' is-ready' : ''}`}
           style={{ '--pull-distance': `${pullRefresh.refreshing ? 58 : pullRefresh.distance}px` }}
         >
-          <span className="pull-refresh-spinner" />
+          <span className="pull-refresh-spinner" aria-hidden="true" />
           <span>{pullRefresh.refreshing ? '刷新中' : pullRefresh.distance >= PULL_REFRESH_TRIGGER ? '松开刷新' : '下拉刷新'}</span>
         </div>
       )}
-      {/* ===== HEADER ===== */}
       <header className="app-header">
         <div className="app-header-inner">
-
-          {/* Logo */}
           <div className="brand-block">
-            <div className="brand-icon">
-              <img src="/icon-192.png" alt="" aria-hidden="true" />
-            </div>
-            <div>
-              <div className="brand-title">
-                校区地址
-              </div>
-              {totalRows > 0 && (
-                <div className="brand-meta">
-                  <DatabaseOutlined style={{ fontSize: 9 }} />
-                  {totalCities} 城市 · {totalRows} 条
-                </div>
-              )}
-            </div>
+            <img className="brand-icon" src="/icon-192.png" width="36" height="36" alt="" />
+            <span>校区地址</span>
           </div>
 
-          {/* Search */}
-          <div className="header-search">
-            <div className="header-search-combo">
-              <Input
-                prefix={<SearchOutlined style={{ color: 'var(--text-muted)' }} />}
-                placeholder={searchMode === 'city' ? '输入城市名...' : '查地址 / 机构 / 电话...'}
-                value={searchQ} onChange={e => setSearchQ(e.target.value)}
-                allowClear disabled={stats.length === 0} style={{ height: 36 }}
-              />
+          <div className="header-search" role="search" aria-label="搜索校区">
+            <SearchOutlined className="header-search-icon" aria-hidden="true" />
+            <input
+              type="search"
+              ref={searchInputRef}
+              aria-label={searchMode === 'city' ? '搜索城市' : '按关键词搜索地址'}
+              placeholder={searchMode === 'city' ? '搜索城市' : '搜索地址、机构或电话'}
+              value={searchQ}
+              onChange={event => setSearchQ(event.target.value)}
+            />
+            {searchQ && (
+              <button
+                type="button"
+                className="clear-search"
+                aria-label="清除搜索"
+                onClick={() => {
+                  setSearchQ('')
+                  searchInputRef.current?.focus()
+                }}
+              >
+                <CloseCircleFilled />
+              </button>
+            )}
+            <div className="header-search-mode">
               <select
-                className="header-search-mode"
                 value={searchMode}
-                onChange={e => setSearchMode(e.target.value)}
-                aria-label="搜索类型"
+                onChange={event => setSearchMode(event.target.value)}
+                aria-label="搜索范围"
               >
                 <option value="city">城市</option>
-                <option value="keyword">关键字</option>
+                <option value="keyword">关键词</option>
               </select>
+              <DownOutlined aria-hidden="true" />
             </div>
           </div>
 
-          {/* Actions */}
-          <Space size={6} className="header-actions">
+          <div className="header-actions">
             <Segmented
               className="view-switch"
-              size="small"
+              aria-label="浏览视图"
               value={viewMode}
               onChange={(mode) => {
                 setViewMode(mode)
@@ -230,65 +234,68 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout, authEnabled }) {
                 })
               }}
               options={[
-                { value: 'list', icon: <UnorderedListOutlined />, label: <span className="view-switch-label">列表</span> },
-                { value: 'map', icon: <EnvironmentOutlined />, label: <span className="view-switch-label">地图</span> },
+                { value: 'list', icon: <UnorderedListOutlined />, label: '列表' },
+                { value: 'map', icon: <EnvironmentOutlined />, label: '地图' },
               ]}
             />
 
-            <Tooltip title={themeMode === 'dark' ? '切换浅色模式' : '切换深色模式'}>
-              <Button
-                icon={themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-                onClick={() => onToggleTheme()}
-                style={{ height: 36 }}
-              />
-            </Tooltip>
+            <button className="toolbar-icon" type="button" aria-label={themeLabel} title={themeLabel} onClick={onToggleTheme}>
+              {themeMode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+            </button>
 
-            {authEnabled && !user?.isGuest && (
-              <>
-                <div className="account-chip" title={user?.isAdmin ? '管理员账号' : '普通账号'}>
-                  {user?.isAdmin ? <CrownOutlined /> : <UserOutlined />}
-                  <span>{user?.username}</span>
-                </div>
-
-                <Tooltip title="退出登录">
-                  <Button icon={<LogoutOutlined />} onClick={onLogout} style={{ height: 36 }} />
-                </Tooltip>
-              </>
+            {user.isAdmin && (
+              <a className="toolbar-icon" href="/console" aria-label="管理控制台" title="管理控制台">
+                <SettingOutlined />
+              </a>
             )}
-          </Space>
+
+            {showAccount && (
+              <div className="header-account">
+                <div className="account-chip" title={user.username}>
+                  <UserOutlined />
+                  <span>{user.username}</span>
+                </div>
+                <button className="toolbar-icon" type="button" aria-label="退出登录" title="退出登录" onClick={onLogout}>
+                  <LogoutOutlined />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* ===== MAIN ===== */}
       <main className="app-main">
         {viewMode === 'list' && !searchTerm && (
-          <section className="overview-panel" aria-label="数据概览">
+          <section className="overview-panel" aria-labelledby="overview-title">
             <div className="overview-copy">
-              <span className="overview-kicker">Address Ledger</span>
-              <h1>校区地址台账</h1>
-              <p>按城市查看校区地址、联系人与坐标状态，管理员可在控制台集中导入和维护数据。</p>
-            </div>
-            <div className="overview-stats overview-stats--compact" aria-label="当前数据统计">
-              <div className="overview-stat">
-                <span>{totalCities}</span>
-                <strong>覆盖城市</strong>
-              </div>
-              <div className="overview-stat">
-                <span>{totalRows}</span>
-                <strong>地址记录</strong>
-              </div>
+              <h1 id="overview-title">校区地址台账</h1>
+              <p>按城市查找校区地址、联系人与地图位置。</p>
+              <dl className="overview-stats" aria-busy={statsLoading}>
+                <div>
+                  <dt>覆盖城市</dt>
+                  <dd>{statsLoading ? '—' : totalCities.toLocaleString('zh-CN')}</dd>
+                </div>
+                <div>
+                  <dt>地址记录</dt>
+                  <dd>{statsLoading ? '—' : totalRows.toLocaleString('zh-CN')}</dd>
+                </div>
+              </dl>
             </div>
           </section>
         )}
         {viewMode === 'map' ? (
-          <MapView searchQuery={searchTerm} searchMode={searchMode} themeMode={themeMode} />
+          <MapView
+            searchQuery={searchTerm}
+            searchMode={searchMode}
+            themeMode={themeMode}
+            canEditAddresses={user.isAdmin === true && !user.isGuest}
+          />
         ) : searchTerm ? (
           <SearchResults query={searchTerm} rows={searchResults} loading={searchLoading} />
         ) : (
           <CityGrid stats={stats} loading={statsLoading} searchQuery="" />
         )}
       </main>
-
     </div>
   )
 }
@@ -298,7 +305,6 @@ export default function Page() {
   const themeMode = settings.themeMode || 'light'
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [authEnabled, setAuthEnabled] = useState(false)
 
   useEffect(() => {
     initSettings()
@@ -310,7 +316,6 @@ export default function Page() {
         const configResponse = await fetch('/api/public-config', { cache: 'no-store' })
         const config = await configResponse.json()
         const authEnabled = config?.authEnabled === true
-        setAuthEnabled(authEnabled)
         const response = await fetch('/api/auth/me', { cache: 'no-store' })
         const data = await response.json().catch(() => ({}))
 
@@ -335,10 +340,8 @@ export default function Page() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = themeMode
-    document.documentElement.style.colorScheme = themeMode
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeMode === 'dark' ? '#1b1d22' : '#f5f5f7')
   }, [themeMode])
-
-  const isDark = themeMode === 'dark'
 
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -346,42 +349,19 @@ export default function Page() {
   }
 
   if (authLoading || !user) {
-    return <div className="auth-loading"><span /><p>正在进入地址台账</p></div>
+    return <div className="auth-loading" role="status"><span aria-hidden="true" />正在进入地址台账</div>
   }
 
   return (
-    <ConfigProvider
-      theme={{
-        algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-        token: {
-          colorPrimary: isDark ? '#72c8b8' : '#0f6f62',
-          colorBgBase: isDark ? '#101714' : '#f5f7f1',
-          colorBgContainer: isDark ? '#18231f' : '#fbfcf8',
-          colorBgElevated: isDark ? '#1e2a25' : '#fbfcf8',
-          colorBorder: isDark ? 'rgba(177,194,173,0.22)' : '#d9e0d5',
-          borderRadius: 8,
-          fontFamily: "'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif",
-          colorText: isDark ? '#edf4ee' : '#18211d',
-          colorTextSecondary: isDark ? '#bdcbbf' : '#4c5d53',
-          colorTextTertiary: isDark ? '#879589' : '#748078',
-        },
-        components: {
-          Button: { borderRadius: 8 },
-          Input: { borderRadius: 8 },
-          Modal: { borderRadiusLG: 8 },
-          Drawer: { borderRadiusLG: 0 },
-        }
-      }}
-    >
-      <App message={{ top: 88 }}>
+    <AppTheme mode={themeMode}>
+      <App message={{ top: 80 }}>
         <MainApp
           themeMode={themeMode}
           onToggleTheme={() => updateLocalSettings({ themeMode: themeMode === 'dark' ? 'light' : 'dark' })}
           user={user}
           onLogout={logout}
-          authEnabled={authEnabled}
         />
       </App>
-    </ConfigProvider>
+    </AppTheme>
   )
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { query, initDB } from '@/lib/db'
-import { getAppUser } from '@/lib/auth'
+import { query } from '@/lib/db'
+import { getAdminAccessError } from '@/lib/auth'
 import { geocodeAddress, getAmapWebServiceKey } from '@/lib/amap'
 
 const RETRYABLE_LIMIT_ERRORS = new Set([
@@ -53,9 +53,9 @@ function retryableFilter(retryFailed) {
 }
 
 export async function POST(request) {
-  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
-    await initDB()
+    const accessError = await getAdminAccessError()
+    if (accessError) return accessError
 
     const body = await request.json().catch(() => ({}))
     const limit = clampBatchSize(body.limit)

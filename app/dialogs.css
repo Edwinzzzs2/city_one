@@ -1,0 +1,376 @@
+.apple-dialog-wrap.ant-modal-wrap {
+  padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+  overscroll-behavior: contain;
+}
+
+.ant-modal-root .apple-dialog-mask.ant-modal-mask {
+  background: rgba(20, 29, 43, .32);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+.apple-dialog-wrap .apple-dialog {
+  max-width: calc(100% - 32px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  margin: 0 auto;
+  padding: 0;
+}
+
+.apple-dialog.ant-modal .ant-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface-elevated);
+  box-shadow: 0 24px 80px rgba(21, 36, 58, .23), 0 3px 9px rgba(21, 36, 58, .06);
+}
+
+.apple-dialog.ant-modal .ant-modal-header {
+  flex: none;
+  margin: 0;
+  padding: 20px 58px 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.apple-dialog.ant-modal .ant-modal-close {
+  top: 19px;
+  inset-inline-end: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.apple-dialog.ant-modal .ant-modal-close:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.apple-dialog.ant-modal .ant-modal-body {
+  min-height: 0;
+  padding: 20px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.apple-dialog.ant-modal .ant-modal-footer {
+  flex: none;
+  margin: 0;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-elevated);
+}
+
+.apple-dialog .ant-btn {
+  min-height: 40px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.dialog-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 11px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 680;
+  line-height: 1.35;
+  letter-spacing: -.025em;
+}
+
+.dialog-title-icon {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.apple-dialog .dialog-notice {
+  padding: 10px 12px;
+}
+
+.settings-form {
+  margin-top: 18px;
+}
+
+.settings-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+.settings-form .ant-form-item:last-child {
+  margin-bottom: 0;
+}
+
+.settings-form .ant-form-item-label {
+  padding-bottom: 6px;
+}
+
+.settings-form .ant-form-item-label > label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-form .ant-form-item-extra {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.parse-model {
+  max-width: 160px;
+  padding: 4px 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parse-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 1px 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.parse-steps li {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.parse-steps li::before {
+  display: block;
+  height: 3px;
+  margin-bottom: 7px;
+  border-radius: 999px;
+  background: var(--border);
+  content: "";
+}
+
+.parse-steps li[aria-current="step"] {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.parse-steps li[aria-current="step"]::before {
+  background: var(--accent);
+}
+
+.parse-steps li[data-complete="true"]::before {
+  background: color-mix(in srgb, var(--accent) 46%, var(--surface));
+}
+
+.parse-setup,
+.parse-preview {
+  display: grid;
+  gap: 14px;
+}
+
+.parse-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.parse-preview .parse-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.parse-stats > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.parse-stats dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.parse-stats dd {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 680;
+  line-height: 1.18;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.03em;
+}
+
+.parse-stats dd span {
+  margin-inline-start: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.parse-progress {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 14px 0 6px;
+  text-align: center;
+}
+
+.parse-progress h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.parse-progress p {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.parse-progress .ant-progress {
+  width: min(100%, 380px);
+  margin-bottom: 5px;
+}
+
+.parse-table {
+  min-width: 0;
+}
+
+.parse-table .ant-table-container {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.parse-table .ant-table-body {
+  overscroll-behavior-x: contain;
+}
+
+.parse-table .ant-table-thead > tr > th {
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.parse-table .ant-tag {
+  margin-inline-end: 0;
+  border-radius: 999px;
+}
+
+.parse-table .ant-table-pagination.ant-pagination {
+  margin: 12px 0 0;
+}
+
+.parse-footer,
+.parse-actions,
+.parse-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.parse-footer {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  text-align: start;
+}
+
+.parse-mode {
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.parse-mode .ant-radio-button-wrapper {
+  height: 36px;
+  line-height: 34px;
+  font-size: 13px;
+}
+
+.parse-footer .parse-actions {
+  margin-inline-start: auto;
+}
+
+.parse-footer .parse-actions .ant-btn + .ant-btn {
+  margin-inline-start: 0;
+}
+
+@media (max-width: 560px) {
+  .apple-dialog.ant-modal .ant-modal-header {
+    padding: 14px 50px 12px 16px;
+  }
+
+  .apple-dialog.ant-modal .ant-modal-close {
+    top: 14px;
+    inset-inline-end: 10px;
+  }
+
+  .apple-dialog.ant-modal .ant-modal-body {
+    padding: 16px;
+  }
+
+  .apple-dialog.ant-modal .ant-modal-footer {
+    padding: 12px 16px;
+  }
+
+  .apple-dialog input.ant-input {
+    font-size: 16px;
+  }
+
+  .dialog-title {
+    font-size: 17px;
+  }
+
+  .dialog-title-icon {
+    flex-basis: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .parse-preview .parse-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .parse-mode,
+  .parse-actions {
+    width: 100%;
+  }
+
+  .parse-mode .ant-radio-group {
+    display: flex;
+    width: 100%;
+  }
+
+  .parse-mode .ant-radio-button-wrapper {
+    flex: 1;
+    min-width: 0;
+    padding-inline: 4px;
+    text-align: center;
+  }
+
+  .parse-actions .ant-btn-primary {
+    flex: 1;
+  }
+}

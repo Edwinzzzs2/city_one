@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { query, initDB } from '@/lib/db'
-import { getAppUser } from '@/lib/auth'
+import { query } from '@/lib/db'
+import { getAdminAccessError } from '@/lib/auth'
 
 function parseId(value) {
   const id = Number(value)
@@ -17,10 +17,9 @@ function parseCoordinate(value, label, min, max) {
 }
 
 export async function POST(request) {
-  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
+  const accessError = await getAdminAccessError()
+  if (accessError) return accessError
   try {
-    await initDB()
-
     const body = await request.json()
     const id = parseId(body.id)
     const lng = parseCoordinate(body.lng, '经度', -180, 180)
