@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'city-one-static-'
-const CACHE_NAME = `${CACHE_PREFIX}v1`
+const CACHE_NAME = `${CACHE_PREFIX}v2`
 const PRECACHE_URLS = [
   '/offline.html',
   '/manifest.json',

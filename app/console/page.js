@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { App as AntdApp } from 'antd'
 import {
-  ArrowLeftOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseOutlined, ControlOutlined, CrownOutlined, DashboardOutlined, LogoutOutlined,
-  DatabaseOutlined, EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined, LeftOutlined,
-  LockOutlined, MenuOutlined, PlusOutlined, ReloadOutlined, RightOutlined, RobotOutlined, SafetyCertificateOutlined,
-  SearchOutlined, SettingOutlined, TeamOutlined, UploadOutlined, UserOutlined, WarningOutlined,
+  ArrowLeftOutlined, BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseOutlined,
+  ControlOutlined, CrownOutlined, DashboardOutlined, DatabaseOutlined, DesktopOutlined,
+  EnvironmentOutlined, EyeInvisibleOutlined, EyeOutlined, FileExcelOutlined, KeyOutlined,
+  LeftOutlined, LockOutlined, LogoutOutlined, MenuOutlined, PlusOutlined, ReloadOutlined,
+  RightOutlined, RobotOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined,
+  TeamOutlined, UploadOutlined, UserOutlined, WarningOutlined,
 } from '@ant-design/icons'
 import AiParseModal from '@/components/AiParseModal'
 import useDataStore from '@/store/useDataStore'
@@ -14,14 +16,14 @@ import { parseExcelFile } from '@/utils/excelParser'
 import styles from './console.module.css'
 import dataStyles from './data.module.css'
 
-const TAB_META = {
-  users: { label: '用户与权限', code: 'ACCESS', icon: TeamOutlined },
-  whitelist: { label: '注册白名单', code: 'REGISTRATION', icon: SafetyCertificateOutlined },
-  data: { label: '数据导入', code: 'DATA', icon: DatabaseOutlined },
-  usage: { label: '高德用量', code: 'AMAP METER', icon: DashboardOutlined },
-  logs: { label: '地图日志', code: 'MAP LOGS', icon: EnvironmentOutlined },
-  settings: { label: '系统配置', code: 'SETTINGS', icon: SettingOutlined },
-}
+const consoleTabs = [
+  { key: 'users', label: '用户与权限', icon: TeamOutlined },
+  { key: 'whitelist', label: '注册白名单', icon: SafetyCertificateOutlined },
+  { key: 'data', label: '数据导入', icon: DatabaseOutlined },
+  { key: 'usage', label: '高德用量', icon: DashboardOutlined },
+  { key: 'logs', label: '地图日志', icon: EnvironmentOutlined },
+  { key: 'settings', label: '系统配置', icon: SettingOutlined },
+]
 
 async function api(url, options) {
   const response = await fetch(url, {
@@ -34,7 +36,7 @@ async function api(url, options) {
 }
 
 function formatDate(value) {
-  if (!value) return '-'
+  if (!value) return '—'
   return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
@@ -87,7 +89,7 @@ function UsageTrend({ rows = [] }) {
 
 function Toggle({ checked, onChange, disabled, label }) {
   return (
-    <button type="button" className={`${styles.toggle} ${checked ? styles.toggleOn : ''}`} onClick={() => onChange(!checked)} disabled={disabled} aria-label={label} aria-pressed={checked}>
+    <button type="button" role="switch" className={styles.toggle} onClick={() => onChange(!checked)} disabled={disabled} aria-label={label} aria-checked={checked}>
       <span />
     </button>
   )
@@ -132,8 +134,10 @@ function ConsolePageContent() {
   const stats = useMemo(() => ({
     users: users.length,
     admins: users.filter(user => user.is_admin).length,
+    active: users.filter(user => user.is_active).length,
     pending: whitelist.filter(item => !item.used_at).length,
   }), [users, whitelist])
+  const currentTab = consoleTabs.find(item => item.key === tab)
 
   async function loadAll({ quiet = false } = {}) {
     if (!quiet) setLoading(true)
@@ -312,9 +316,6 @@ function ConsolePageContent() {
   }
 
   function navBadge(key) {
-    if (key === 'users') return stats.users
-    if (key === 'whitelist') return stats.pending
-    if (key === 'data') return rawRows.length || null
     if (key === 'logs') return Number(logSummary.errors_24h) || null
     return null
   }
@@ -327,64 +328,83 @@ function ConsolePageContent() {
   if (loading) return <div className={styles.loading}><span /><p>正在验证管理权限</p></div>
 
   return (
-    <div className={styles.shell} style={{ position: 'relative', zIndex: 1 }}>
-      {mobileNavOpen && <button type="button" className={styles.navBackdrop} onClick={() => setMobileNavOpen(false)} aria-label="关闭管理菜单" />}
-      <aside className={`${styles.sidebar} ${mobileNavOpen ? styles.sidebarOpen : ''}`}>
-        <a className={styles.brand} href="/" aria-label="返回地址台账"><img src="/icon.svg" alt="" /><div><strong>CITY ONE</strong><span>CONTROL DESK</span></div></a>
-        <button type="button" className={styles.menuToggle} onClick={() => setMobileNavOpen(open => !open)} aria-expanded={mobileNavOpen} aria-controls="console-navigation">
+    <div className={styles.shell}>
+      {mobileNavOpen && (
+        <button type="button" className={styles.navBackdrop} tabIndex={-1} onClick={() => setMobileNavOpen(false)} aria-label="关闭管理菜单" />
+      )}
+      <aside className={styles.sidebar}>
+        <a className={styles.brand} href="/" aria-label="返回地址台账">
+          <img src="/icon-192.png" alt="" width={38} height={38} />
+          <div><strong>校区地址台账</strong><span>管理控制台</span></div>
+        </a>
+        <button
+          type="button"
+          className={styles.menuToggle}
+          onClick={() => setMobileNavOpen(open => !open)}
+          aria-expanded={mobileNavOpen}
+          aria-controls="console-navigation"
+        >
           {mobileNavOpen ? <CloseOutlined /> : <MenuOutlined />}
           <span>{mobileNavOpen ? '关闭' : '菜单'}</span>
         </button>
-        <div className={styles.navPanel} id="console-navigation">
-          <nav aria-label="后台管理菜单">
-            {Object.entries(TAB_META).map(([key, item]) => {
-              const Icon = item.icon
+        <div className={styles.navPanel} id="console-navigation" data-open={mobileNavOpen}>
+          <nav className={styles.navigation} aria-label="管理控制台">
+            {consoleTabs.map(({ key, label, icon: Icon }) => {
               const badge = navBadge(key)
               return (
-                <button type="button" key={key} className={tab === key ? styles.active : ''} onClick={() => selectTab(key)} aria-label={item.label} aria-current={tab === key ? 'page' : undefined}>
-                  <Icon /><span>{item.label}</span>{badge ? <i>{badge}</i> : null}
+                <button key={key} type="button" aria-current={tab === key ? 'page' : undefined} onClick={() => selectTab(key)}>
+                  <span className={styles.navIcon} data-section={key}><Icon /></span>
+                  <span>{label}</span>
+                  {badge && <i className={styles.navBadge}>{badge}</i>}
                 </button>
               )
             })}
           </nav>
-          <div className={styles.operator}><div><UserOutlined /></div><span><small>当前管理员</small><strong>{viewer?.username}</strong></span></div>
-          <a className={styles.back} href="/"><ArrowLeftOutlined /> 返回地址台账</a>
-          <button type="button" className={styles.logout} onClick={logout} aria-label="退出登录" title="退出登录"><LogoutOutlined /><span>退出</span></button>
+          <div className={styles.sidebarFooter}>
+            <div className={styles.operator}><div><UserOutlined /></div><span><strong>{viewer?.username}</strong><small>当前管理员</small></span></div>
+            <a className={styles.back} href="/"><ArrowLeftOutlined /> 返回地址台账</a>
+            <button type="button" className={styles.logout} onClick={logout}><LogoutOutlined /> 退出登录</button>
+          </div>
         </div>
       </aside>
 
       <main className={styles.main}>
         <header className={styles.topbar}>
-          <div><span>ADMIN CONSOLE / {TAB_META[tab].code}</span><h1>{TAB_META[tab].label}</h1></div>
+          <h1>{currentTab.label}</h1>
           <button type="button" className={styles.refresh} onClick={refreshCurrent} disabled={(tab === 'logs' && logsLoading) || (tab === 'usage' && amapUsageLoading)}><ReloadOutlined /> 刷新</button>
         </header>
 
-        {notice && <div className={`${styles.notice} ${notice.type === 'error' ? styles.noticeError : ''}`}>{notice.type === 'error' ? <CloseOutlined /> : <CheckCircleOutlined />}{notice.text}</div>}
+        {notice && <div role={notice.type === 'error' ? 'alert' : 'status'} className={`${styles.notice} ${notice.type === 'error' ? styles.noticeError : ''}`}>{notice.type === 'error' ? <CloseOutlined /> : <CheckCircleOutlined />}{notice.text}</div>}
 
         {tab === 'users' && <section>
           <div className={styles.stats}>
-            <article><span>已创建账号</span><strong>{stats.users}</strong><small>包含停用账号</small></article>
-            <article><span>管理员</span><strong>{stats.admins}</strong><small>可进入此控制台</small></article>
-            <article><span>正常使用</span><strong>{users.filter(user => user.is_active).length}</strong><small>当前启用状态</small></article>
+            <article><span>已创建账号</span><strong>{stats.users}</strong><small>包含停用账号</small><i className={styles.statIcon} data-section="users" aria-hidden="true"><TeamOutlined /></i></article>
+            <article><span>管理员</span><strong>{stats.admins}</strong><small>可进入此控制台</small><i className={styles.statIcon} data-section="whitelist" aria-hidden="true"><CrownOutlined /></i></article>
+            <article><span>已启用账号</span><strong>{stats.active}</strong><i className={styles.statIcon} data-section="data" aria-hidden="true"><CheckCircleOutlined /></i></article>
           </div>
           <div className={styles.tableCard}>
-            <div className={styles.sectionHead}><div><span>ACCESS DIRECTORY</span><h2>账号目录</h2></div><p>管理员权限变更会在用户的下一次服务端请求生效。</p></div>
+            <div className={styles.sectionHead}><h2>账号目录</h2><p>权限变更将在用户的下一次请求生效。</p></div>
             <div>
               <div className={styles.userHeader}><span>用户</span><span>最近登录</span><span>管理员</span><span>账号状态</span><span>操作</span></div>
+              {users.length === 0 && <div className={styles.empty}>暂无账号</div>}
               {users.map(user => <div className={styles.userRow} key={user.id}>
                 <div className={styles.userIdentity}><b>{user.username.slice(0, 1).toUpperCase()}</b><span><strong>{user.username}</strong><small>创建于 {formatDate(user.created_at)}</small></span>{user.id === viewer?.id && <em>你</em>}</div>
-                <span className={styles.date}>{formatDate(user.last_login_at)}</span>
+                <span className={styles.date}><span>最近登录</span>{formatDate(user.last_login_at)}</span>
                 <div className={styles.switchCell}><Toggle checked={user.is_admin} disabled={user.id === viewer?.id} onChange={value => updateUser(user, { isAdmin: value })} label="管理员权限" /><span>{user.is_admin ? '管理员' : '成员'}</span></div>
                 <div className={styles.switchCell}><Toggle checked={user.is_active} disabled={user.id === viewer?.id} onChange={value => updateUser(user, { isActive: value })} label="账号启用状态" /><span>{user.is_active ? '启用' : '停用'}</span></div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                  <button className={styles.textButton} onClick={() => { setResetTarget(user); setNewPassword('') }}><KeyOutlined /> 重置密码</button>
+                <div className={styles.passwordActions}>
+                  <button type="button" className={styles.textButton} onClick={() => { setResetTarget(user); setNewPassword('') }}><KeyOutlined /> 重置密码</button>
                   {user.password_plain ? (
-                    <button className={styles.textButton} onClick={() => setVisiblePasswords(prev => ({ ...prev, [user.id]: !prev[user.id] }))}>
-                      {visiblePasswords[user.id] ? <EyeInvisibleOutlined /> : <EyeOutlined />} {visiblePasswords[user.id] ? user.password_plain : '查看密码'}
+                    <button
+                      type="button"
+                      className={styles.textButton}
+                      onClick={() => setVisiblePasswords(previous => ({ ...previous, [user.id]: !previous[user.id] }))}
+                      aria-pressed={Boolean(visiblePasswords[user.id])}
+                    >
+                      {visiblePasswords[user.id] ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                      <span>{visiblePasswords[user.id] ? user.password_plain : '查看密码'}</span>
                     </button>
-                  ) : (
-                    <span style={{ fontSize: '10px', color: '#8b958f', paddingLeft: '4px' }}>无明文记录</span>
-                  )}
+                  ) : <small>无明文记录</small>}
                 </div>
               </div>)}
             </div>
@@ -393,22 +413,22 @@ function ConsolePageContent() {
 
         {tab === 'whitelist' && <section className={styles.split}>
           <form className={styles.inviteCard} onSubmit={addWhitelist}>
-            <div className={styles.bigIcon}><PlusOutlined /></div><span className={styles.kicker}>NEW INVITATION</span><h2>添加注册名额</h2><p>用户注册时输入的名称必须与这里完全一致，每个名额只能使用一次。</p>
+            <div className={styles.bigIcon}><PlusOutlined /></div><h2>添加注册名额</h2><p>注册时需填写相同的用户名。每个名额可使用一次。</p>
             <Field label="允许注册的用户名"><input value={invite.username} onChange={event => setInvite({ ...invite, username: event.target.value })} placeholder="例如：zhangsan" minLength={2} maxLength={32} required /></Field>
             <label className={styles.checkLine}><input type="checkbox" checked={invite.grantAdmin} onChange={event => setInvite({ ...invite, grantAdmin: event.target.checked })} /><span><strong>注册后授予管理员</strong><small>该用户将能管理账号、白名单与系统配置</small></span></label>
             <button className={styles.primary} disabled={saving}><PlusOutlined /> {saving ? '正在添加…' : '加入白名单'}</button>
           </form>
           <div className={styles.tableCard}>
-            <div className={styles.sectionHead}><div><span>REGISTRATION GATE</span><h2>注册名额</h2></div><p>{stats.pending} 个待使用名额</p></div>
+            <div className={styles.sectionHead}><h2>注册名额</h2><p>{stats.pending} 个待使用名额</p></div>
             <div className={styles.inviteList}>{whitelist.length === 0 && <div className={styles.empty}>还没有添加白名单</div>}{whitelist.map(item => <article key={item.id}>
-              <div className={`${styles.statusDot} ${item.used_at ? styles.used : ''}`} /><div><strong>{item.username}</strong><span>{item.grant_admin && <em><CrownOutlined /> 管理员</em>}{item.used_at ? `已由 ${item.used_by_username || item.username} 使用` : '等待注册'}</span></div><time>{formatDate(item.used_at || item.created_at)}</time>{!item.used_at && <button onClick={() => removeWhitelist(item.id)}><CloseOutlined /></button>}
+              <div className={`${styles.statusDot} ${item.used_at ? styles.used : ''}`} /><div><strong>{item.username}</strong><span>{item.grant_admin && <em><CrownOutlined /> 管理员</em>}{item.used_at ? `已由 ${item.used_by_username || item.username} 使用` : '等待注册'}</span></div><time>{formatDate(item.used_at || item.created_at)}</time>{!item.used_at && <button type="button" aria-label={`撤回 ${item.username} 的注册名额`} onClick={() => removeWhitelist(item.id)}><CloseOutlined /></button>}
             </article>)}</div>
           </div>
         </section>}
 
         {tab === 'usage' && <section className={styles.usageWorkspace}>
           <div className={styles.usageIntro}>
-            <div><b><DashboardOutlined /></b><span>AMAP USAGE ESTIMATE</span><h2>调用量仪表盘</h2></div>
+            <div><b><DashboardOutlined /></b><h2>调用量仪表盘</h2></div>
             <p>统计本系统产生的 JS 地图初始化与地点搜索调用。高德未开放余额查询接口，因此剩余额度按系统配置估算，最终账单以高德控制台为准。</p>
             <em>Asia / Shanghai · {amapUsage?.period?.monthStart || '本月'} — {amapUsage?.period?.monthEnd || ''}</em>
           </div>
@@ -421,7 +441,7 @@ function ConsolePageContent() {
               <UsageMeter code="PLACE SEARCH" title="地点搜索" description="用户点击搜索且实际向高德发起查询；缓存命中不重复计数。" data={amapUsage.services?.placeSearch} />
             </div>
             <div className={styles.usageHistory}>
-              <div className={styles.sectionHead}><div><span>14 DAY SIGNAL</span><h2>最近十四天调用趋势</h2></div><p><i /> 地图初始化 <b /> 地点搜索</p></div>
+              <div className={styles.sectionHead}><h2>最近十四天调用趋势</h2><p><i /> 地图初始化 <b /> 地点搜索</p></div>
               <UsageTrend rows={amapUsage.daily} />
             </div>
             <div className={styles.usageFootnote}><WarningOutlined /><span>这里只统计本项目成功上报的调用，不包含同一高德账号下其他应用、被浏览器拦截的日志或高德侧额外计费项目。</span><button type="button" onClick={() => selectTab('settings')}>配置月额度</button></div>
@@ -466,7 +486,7 @@ function ConsolePageContent() {
 
           <div className={styles.logTableCard} aria-busy={logsLoading}>
             <div className={styles.sectionHead}>
-              <div><span>MAP SEARCH REQUESTS</span><h2>地图点搜索记录</h2></div>
+              <h2>地图点搜索记录</h2>
               <p>当前筛选共 {Number(logPagination.total || 0)} 条，数据库最多保留约 5000 条。</p>
             </div>
             <div className={styles.logTable} role="table" aria-label="地图点搜索日志">
@@ -513,7 +533,6 @@ function ConsolePageContent() {
           />
           <div className={dataStyles.importCard}>
             <div className={dataStyles.importMark}><FileExcelOutlined /></div>
-            <span className={dataStyles.kicker}>DATA INTAKE</span>
             <h2>导入校区地址数据</h2>
             <p>上传 Excel 或 CSV 文件后，先由 AI 识别字段并预览，再选择追加或覆盖写入地址台账。</p>
             <button type="button" onClick={() => fileRef.current?.click()} disabled={importing}>
@@ -524,13 +543,12 @@ function ConsolePageContent() {
 
           <div className={dataStyles.sidePanel}>
             <div className={dataStyles.flowHead}>
-              <span>IMPORT WORKFLOW</span>
-              <h3>三步完成导入</h3>
+              <h3>导入步骤</h3>
             </div>
             <ol className={dataStyles.steps}>
-              <li><b>01</b><div><strong>读取原始表格</strong><span>自动识别工作表与有效数据行</span></div></li>
-              <li><b>02</b><div><strong>AI 解析字段</strong><span>统一省市区、地址、联系人等字段</span></div></li>
-              <li><b>03</b><div><strong>确认写入方式</strong><span>预览结果后选择追加或覆盖数据</span></div></li>
+              <li><b aria-hidden="true">1</b><div><strong>读取原始表格</strong><span>自动识别工作表与有效数据行</span></div></li>
+              <li><b aria-hidden="true">2</b><div><strong>AI 解析字段</strong><span>统一省市区、地址、联系人等字段</span></div></li>
+              <li><b aria-hidden="true">3</b><div><strong>确认写入方式</strong><span>预览结果后选择追加或覆盖数据</span></div></li>
             </ol>
 
             {rawRows.length > 0 ? (
@@ -546,26 +564,26 @@ function ConsolePageContent() {
         </section>}
 
         {tab === 'settings' && settings && <form className={styles.configForm} onSubmit={saveSettings}>
-          <div className={styles.configIntro}><ControlOutlined /><div><span>SYSTEM RUNTIME</span><h2>数据库配置优先于环境变量</h2><p>保存后无需重新部署；留空时仍可回退到服务器环境变量。</p></div><button className={styles.primary} disabled={saving}>{saving ? '保存中…' : '保存全部配置'}</button></div>
-          <div className={styles.configSection}><div className={styles.configTitle}><b>AI</b><div><h3>智能解析服务</h3><p>OpenAI 兼容接口与批量处理参数</p></div></div><div className={styles.fieldGrid}>
+          <div className={styles.configIntro}><span className={styles.bigIcon}><ControlOutlined /></span><div><h2>配置生效规则</h2><p>已保存的配置优先使用。留空时读取服务器环境变量。</p></div><button className={styles.primary} disabled={saving}>{saving ? '保存中…' : '保存全部配置'}</button></div>
+          <div className={styles.configSection}><div className={styles.configTitle}><b><RobotOutlined /></b><div><h3>智能解析服务</h3><p>OpenAI 兼容接口与批量处理参数</p></div></div><div className={styles.fieldGrid}>
             <Field label="API 接入地址" wide><input value={settings.apiBaseUrl} onChange={e => changeSetting('apiBaseUrl', e.target.value)} placeholder="https://example.com/v1" /></Field>
             <Field label="API 密钥" hint="已配置的密钥显示为 ********"><input type="password" value={settings.apiKey} onChange={e => changeSetting('apiKey', e.target.value)} placeholder="sk-..." /></Field>
             <Field label="模型"><input value={settings.model} onChange={e => changeSetting('model', e.target.value)} placeholder="gpt-5.5" /></Field>
             <Field label="单批条数"><input type="number" min="10" max="100" value={settings.batchSize} onChange={e => changeSetting('batchSize', e.target.value)} /></Field>
           </div></div>
-          <div className={styles.configSection}><div className={styles.configTitle}><b>MAP</b><div><h3>高德地图</h3><p>浏览器地图与服务端地理编码凭证</p></div></div><div className={styles.fieldGrid}>
+          <div className={styles.configSection}><div className={styles.configTitle}><b><EnvironmentOutlined /></b><div><h3>高德地图</h3><p>浏览器地图与服务端地理编码凭证</p></div></div><div className={styles.fieldGrid}>
             <Field label="Web JS Key"><input value={settings.amapJsKey} onChange={e => changeSetting('amapJsKey', e.target.value)} /></Field>
             <Field label="JS 安全密钥"><input type="password" value={settings.amapSecurityCode} onChange={e => changeSetting('amapSecurityCode', e.target.value)} /></Field>
             <Field label="Web 服务 Key" hint="仅在服务端用于地理编码" wide><input type="password" value={settings.amapWebServiceKey} onChange={e => changeSetting('amapWebServiceKey', e.target.value)} /></Field>
             <Field label="地图初始化月额度" hint="从高德控制台填写；0 表示未配置"><input type="number" min="0" step="1" value={settings.amapMapMonthlyQuota ?? 0} onChange={e => changeSetting('amapMapMonthlyQuota', e.target.value)} /></Field>
             <Field label="地点搜索月额度" hint="从高德控制台填写；0 表示未配置"><input type="number" min="0" step="1" value={settings.amapSearchMonthlyQuota ?? 0} onChange={e => changeSetting('amapSearchMonthlyQuota', e.target.value)} /></Field>
           </div></div>
-          <div className={styles.configSection}><div className={styles.configTitle}><b>UI</b><div><h3>界面默认值</h3><p>新设备首次打开时采用的显示偏好</p></div></div><div className={styles.fieldGrid}>
+          <div className={styles.configSection}><div className={styles.configTitle}><b><DesktopOutlined /></b><div><h3>界面默认值</h3><p>新设备首次打开时采用的显示偏好</p></div></div><div className={styles.fieldGrid}>
             <Field label="默认主题"><select value={settings.themeMode} onChange={e => changeSetting('themeMode', e.target.value)}><option value="light">浅色</option><option value="dark">深色</option></select></Field>
             <Field label="保护半径（公里）"><input type="number" min="1" max="5" value={settings.protectionRadiusKm} onChange={e => changeSetting('protectionRadiusKm', e.target.value)} /></Field>
             <div className={styles.toggleGrid}><label><Toggle checked={Boolean(settings.showProtection)} onChange={value => changeSetting('showProtection', value)} label="默认显示保护范围" /><span>默认显示保护范围</span></label></div>
           </div></div>
-          <div className={styles.configSection}><div className={styles.configTitle}><b>DATA</b><div><h3>Umami 埋点</h3><p>动态加载统计脚本，无需重新构建</p></div></div><div className={styles.fieldGrid}>
+          <div className={styles.configSection}><div className={styles.configTitle}><b><BarChartOutlined /></b><div><h3>Umami 埋点</h3><p>动态加载统计脚本，无需重新构建</p></div></div><div className={styles.fieldGrid}>
             <Field label="Website ID"><input value={settings.umamiWebsiteId} onChange={e => changeSetting('umamiWebsiteId', e.target.value)} placeholder="xxxxxxxx-xxxx-..." /></Field>
             <Field label="埋点脚本 URL"><input value={settings.umamiScriptUrl} onChange={e => changeSetting('umamiScriptUrl', e.target.value)} placeholder="https://cloud.umami.is/script.js" /></Field>
             <Field label="Host URL"><input value={settings.umamiHostUrl} onChange={e => changeSetting('umamiHostUrl', e.target.value)} placeholder="自托管时填写" /></Field>
@@ -582,7 +600,18 @@ function ConsolePageContent() {
         onImported={() => flash('地址数据已导入')}
       />
 
-      {resetTarget && <div className={styles.modalBackdrop} onMouseDown={event => event.target === event.currentTarget && setResetTarget(null)}><form className={styles.modal} onSubmit={resetPassword}><button type="button" className={styles.modalClose} onClick={() => setResetTarget(null)}><CloseOutlined /></button><div className={styles.bigIcon}><LockOutlined /></div><span className={styles.kicker}>PASSWORD RESET</span><h2>重置 {resetTarget.username} 的密码</h2><p>新密码保存后立即生效，用户需使用新密码重新登录。</p><Field label="新密码"><input autoFocus type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={8} maxLength={128} placeholder="至少 8 位" required /></Field><button className={styles.primary} disabled={saving}>{saving ? '正在重置…' : '确认重置'}</button></form></div>}
+      {resetTarget && <div className={styles.modalBackdrop} onMouseDown={event => event.target === event.currentTarget && setResetTarget(null)}>
+        <div className={styles.modal} role="dialog" aria-labelledby="reset-password-title">
+          <form onSubmit={resetPassword}>
+            <button type="button" className={styles.modalClose} aria-label="关闭" onClick={() => setResetTarget(null)}><CloseOutlined /></button>
+            <div className={styles.bigIcon}><LockOutlined /></div>
+            <h2 id="reset-password-title">重置 {resetTarget.username} 的密码</h2>
+            <p>新密码保存后立即生效，用户需使用新密码重新登录。</p>
+            <Field label="新密码"><input autoFocus type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={8} maxLength={128} placeholder="至少 8 位" required /></Field>
+            <button className={styles.primary} disabled={saving}>{saving ? '正在重置…' : '确认重置'}</button>
+          </form>
+        </div>
+      </div>}
     </div>
   )
 }

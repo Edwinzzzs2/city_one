@@ -62,10 +62,16 @@ export default function CopyableAddress({ address, children, className, iconStyl
   }
 
   return (
-    <button type="button" className={className || 'copyable-address'} onClick={handleCopy} aria-label="复制地址">
-      <EnvironmentOutlined className="copyable-address-pin" style={iconStyle} />
+    <button
+      type="button"
+      className={className || 'copyable-address'}
+      onClick={handleCopy}
+      aria-label={text ? `复制地址 ${text}` : '未填写地址'}
+      title={text ? '复制地址' : undefined}
+    >
+      <EnvironmentOutlined className="copyable-address-pin" style={iconStyle} aria-hidden="true" />
       <span className="copyable-address-text">{children || text}</span>
-      <CopyOutlined className="copyable-address-copy" />
+      <CopyOutlined className="copyable-address-copy" aria-hidden="true" />
     </button>
   )
 }

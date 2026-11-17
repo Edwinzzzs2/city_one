@@ -32,11 +32,10 @@ const AMAP_SEARCH_RETRY_CODES = new Set([
 ])
 const MOBILE_MEDIA_QUERY = '(max-width: 720px)'
 const MAP_COLORS = {
-  store: '#0f6f62',
-  manual: '#b65e3f',
-  selected: '#b58419',
-  safe: '#2f9361',
-  danger: '#bf3f35',
+  store: '#007aff',
+  selected: '#b87506',
+  safe: '#22804e',
+  danger: '#d73a3a',
 }
 let amapLoadPromise = null
 
@@ -303,7 +302,7 @@ function distanceLabelContent(distance, conflict) {
 }
 
 const MapSearchPanel = React.memo(function MapSearchPanel({
-  selectedPoint,
+  isRelocating,
   searchText,
   loading,
   results,
@@ -330,12 +329,14 @@ const MapSearchPanel = React.memo(function MapSearchPanel({
   return (
     <div className="map-search-panel">
       <Input.Search
+        prefix={<SearchOutlined aria-hidden="true" />}
         value={inputValue}
         onChange={handleChange}
         onSearch={handleSearch}
         loading={loading}
-        enterButton={selectedPoint ? '搜索定点' : '搜索校验'}
-        placeholder={selectedPoint ? '搜索地址，给当前门店重新定点' : '搜索地址，查看最近门店距离'}
+        enterButton={isRelocating ? '搜索定点' : '搜索校验'}
+        placeholder={isRelocating ? '搜索门店新地址' : '搜索地图地址'}
+        aria-label={isRelocating ? '搜索门店新地址' : '搜索地图地址以校验距离'}
         allowClear
       />
       {results.length > 0 && (
@@ -391,7 +392,7 @@ function markerInfoContent(point = {}) {
   `
 }
 
-export default function MapView({ searchQuery = '', searchMode = 'city', themeMode = 'light', isAdmin = false }) {
+export default function MapView({ searchQuery = '', searchMode = 'city', themeMode = 'light', canEditAddresses = false }) {
   const { message } = App.useApp()
   const { settings, updateLocalSettings } = useDataStore()
   const mapNodeRef = useRef(null)
@@ -429,8 +430,9 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   const amapKey = settings.amapJsKey || ''
   const amapSecurityCode = settings.amapSecurityCode || ''
   const protectionRadiusMeters = protectionRadiusKm * 1000
-  const activeCheckPoint = manualPoint || newPoint
-  const isManualDraft = Boolean(manualPoint && selectedPoint)
+  const editingPoint = canEditAddresses ? selectedPoint : null
+  const isManualDraft = Boolean(manualPoint && editingPoint)
+  const activeCheckPoint = isManualDraft ? manualPoint : newPoint
   const filteredListRows = useMemo(() => {
     const keyword = listFilterText.trim().toLowerCase()
     if (!keyword) return listRows
@@ -446,7 +448,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   }, [settings.showProtection])
 
   const handleProtectionRadiusChange = useCallback((value) => {
-    if (!isAdmin) return
+    if (!canEditAddresses) return
     setProtectionRadiusKm(value)
     updateLocalSettings({ protectionRadiusKm: value })
     trackEvent(readableEventName('调整保护半径', `${value} 公里`), {
@@ -454,10 +456,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       preference: 'protection_radius_km',
       value,
     })
-  }, [isAdmin, updateLocalSettings])
+  }, [canEditAddresses, updateLocalSettings])
 
   const handleShowProtectionChange = useCallback((event) => {
-    if (!isAdmin) return
+    if (!canEditAddresses) return
     const checked = event.target.checked
     setShowProtection(checked)
     updateLocalSettings({ showProtection: checked })
@@ -466,7 +468,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       preference: 'show_protection',
       value: checked,
     })
-  }, [isAdmin, updateLocalSettings])
+  }, [canEditAddresses, updateLocalSettings])
 
   useEffect(() => {
     const query = listFilterText.trim()
@@ -486,15 +488,6 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
   const selectPoint = useCallback((row, { keepDraft = false } = {}) => {
     const point = normalizePoint(row)
-    if (!isAdmin) {
-      setSelectedPoint(null)
-      setManualPoint(null)
-      setNewPoint(null)
-      setMapSearchResults([])
-      const map = mapRef.current
-      if (map && hasLocation(point)) map.panTo([point.lng, point.lat])
-      return
-    }
     setSelectedPoint(point)
     if (!keepDraft) setManualPoint(null)
     setNewPoint(null)
@@ -504,7 +497,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     if (map && hasLocation(point)) {
       map.panTo([point.lng, point.lat])
     }
-  }, [isAdmin])
+  }, [])
 
   const loadPoints = useCallback(async () => {
     setPointsLoading(true)
@@ -825,7 +818,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   }, [activeCheckPoint, bindMarkerInfo, clearOverlays, handleCheckPointDragEnd, isConflict, isManualDraft, mapReady, nearest, protectionRadiusMeters, selectedPoint])
 
   const saveLocation = useCallback(async (row, point, options = {}) => {
-    if (!row?.id || !point) return null
+    if (!canEditAddresses || !row?.id || !point) return null
     setSavingId(row.id)
     try {
       const response = await fetch('/api/addresses/location', {
@@ -871,10 +864,10 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     } finally {
       setSavingId(null)
     }
-  }, [loadPoints, message])
+  }, [canEditAddresses, loadPoints, message])
 
   const handleAutoLocateRow = useCallback(async (row) => {
-    if (!isAdmin) return
+    if (!canEditAddresses) return
     if (!canAutoLocate(row)) {
       message.warning('这条记录缺少可定位的地址信息')
       return
@@ -890,7 +883,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       const data = await response.json()
       if (!response.ok || !data.ok) throw new Error(data.error || '自动定位失败')
 
-      await saveLocation(row, {
+      const saved = await saveLocation(row, {
         lng: data.point.lng,
         lat: data.point.lat,
         formattedAddress: data.point.formattedAddress,
@@ -899,6 +892,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         level: data.point.level,
         address: data.point.formattedAddress,
       })
+      if (!saved) return
+
       trackEvent(readableEventName('自动定位完成', formatPointName(row)), {
         event_type: 'location_auto_geocode',
         city: row.city,
@@ -913,7 +908,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     } finally {
       setAutoGeocodingId(null)
     }
-  }, [isAdmin, message, saveLocation])
+  }, [canEditAddresses, message, saveLocation])
 
   const useMapSearchPoi = useCallback((poi) => {
     const searchLabel = poi.name || [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join('')
@@ -931,13 +926,13 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     setMapSearchText(searchLabel)
     setMapSearchResults([])
 
-    if (selectedPoint) {
+    if (editingPoint) {
       setManualPoint(point)
       setNewPoint(null)
       trackEvent(readableEventName('选择定点候选', poi.name || poi.address), {
         event_type: 'map_poi_select',
         context: 'relocate',
-        city: selectedPoint.city,
+        city: editingPoint.city,
         query: mapSearchText,
         poi_name: poi.name,
         poi_address: [poi.province, poi.city, poi.district, poi.address].filter(Boolean).join(''),
@@ -947,6 +942,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       return
     }
 
+    setSelectedPoint(null)
     setManualPoint(null)
     setNewPoint(point)
     trackEvent(readableEventName('选择搜索候选', poi.name || poi.address), {
@@ -958,7 +954,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       poi_city: poi.city,
     })
     message.success('已作为搜索点进行距离校验，可拖动微调位置')
-  }, [mapSearchText, message, selectedPoint])
+  }, [editingPoint, mapSearchText, message])
 
   const clearMapSearchState = useCallback(() => {
     setMapSearchText('')
@@ -973,22 +969,23 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
   }, [selectedPoint])
 
   const cancelSelectedPoint = useCallback(() => {
-    const draftPoint = manualPoint
     setSelectedPoint(null)
     setManualPoint(null)
     setMapSearchResults([])
-    trackEvent(readableEventName('取消定点', formatPointName(selectedPoint)), {
+    if (!editingPoint) return
+
+    trackEvent(readableEventName('取消定点', formatPointName(editingPoint)), {
       event_type: 'location_relocate_cancel',
-      city: selectedPoint?.city,
-      had_draft: Boolean(draftPoint),
+      city: editingPoint.city,
+      had_draft: Boolean(manualPoint),
     })
-    if (draftPoint) {
-      setNewPoint(draftPoint)
+    if (manualPoint) {
+      setNewPoint(manualPoint)
     }
-  }, [manualPoint, selectedPoint])
+  }, [editingPoint, manualPoint])
 
   // SONAR-REVIEW: 待复扫 / javascript:S3776：搜索重试回调分支较多，人工估算超15；请研发确认是否修改。
-  const handleMapSearch = useCallback(async (value) => {
+  const handleMapSearch = useCallback(async (value, relocationPoint = editingPoint) => {
     const keywords = String(value ?? '').trim()
     if (!keywords) {
       message.warning('请输入地图搜索关键词')
@@ -1007,7 +1004,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     }
     lastMapSearchAtRef.current = now
 
-    const city = selectedPoint?.city || (searchMode === 'city' ? searchQuery : '')
+    const city = relocationPoint?.city || (searchMode === 'city' ? searchQuery : '')
     const cacheKey = `${city}\n${keywords}`.toLowerCase()
     const cached = mapSearchCacheRef.current.get(cacheKey)
 
@@ -1062,9 +1059,9 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       }
 
       setMapSearchResults(results)
-      trackEvent(readableEventName(selectedPoint ? '定点搜索' : '地图搜索', keywords), {
+      trackEvent(readableEventName(relocationPoint ? '定点搜索' : '地图搜索', keywords), {
         event_type: 'map_search',
-        context: selectedPoint ? 'relocate' : 'distance_check',
+        context: relocationPoint ? 'relocate' : 'distance_check',
         query: keywords,
         query_length: keywords.length,
         result_count: results.length,
@@ -1086,9 +1083,9 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
         errorCode: e?.code || e?.name || 'AMAP_SEARCH_ERROR',
         attempts: Math.max(attempts, 1),
       })
-      trackEvent(readableEventName(selectedPoint ? '定点搜索失败' : '地图搜索失败', keywords), {
+      trackEvent(readableEventName(relocationPoint ? '定点搜索失败' : '地图搜索失败', keywords), {
         event_type: 'map_search_error',
-        context: selectedPoint ? 'relocate' : 'distance_check',
+        context: relocationPoint ? 'relocate' : 'distance_check',
         query: keywords,
         query_length: keywords.length,
       })
@@ -1098,17 +1095,17 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       mapSearchInFlightRef.current = false
       setMapSearchLoading(false)
     }
-  }, [amapKey, amapSecurityCode, message, searchMode, searchQuery, selectedPoint])
+  }, [amapKey, amapSecurityCode, editingPoint, message, searchMode, searchQuery])
 
   const searchSelectedPointAddress = useCallback(() => {
-    if (!selectedPoint) return
-    const keyword = searchTextForRow(selectedPoint)
+    if (!editingPoint) return
+    const keyword = searchTextForRow(editingPoint)
     setMapSearchText(keyword)
     handleMapSearch(keyword)
-  }, [handleMapSearch, selectedPoint])
+  }, [editingPoint, handleMapSearch])
 
   const handleGeocodeMissing = useCallback(async () => {
-    if (!isAdmin) return
+    if (!canEditAddresses) return
     setGeocoding(true)
     setGeocodeProgress({ updated: 0, failed: 0, remaining: summary.missing })
 
@@ -1159,21 +1156,22 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
     } finally {
       setGeocoding(false)
     }
-  }, [isAdmin, loadPoints, message, summary.missing])
+  }, [canEditAddresses, loadPoints, message, summary.missing])
 
   // SONAR-REVIEW: 待复扫 / javascript:S3358：列表状态和空态提示包含嵌套三元；请研发确认是否修改。
   return (
-    <section className="map-view">
-      <aside className="map-side">
+    <section className="map-view" aria-label="地图校验">
+      <aside className="map-side" aria-labelledby="map-side-title">
         <div className="map-side-section">
-          <div className="map-side-title">
-            <CompassOutlined />
-            <span>地图校验</span>
-          </div>
+          <h1 className="map-side-title" id="map-side-title">
+            <span className="map-side-icon"><CompassOutlined aria-hidden="true" /></span>
+            地图校验
+          </h1>
           <div className="map-stat-row">
             <button
               type="button"
               className={`map-stat-card ${listMode === 'located' ? 'is-active' : ''}`}
+              aria-pressed={listMode === 'located'}
               onClick={() => {
                 setListMode('located')
                 setListFilterText('')
@@ -1184,12 +1182,13 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                 })
               }}
             >
-              <strong>{summary.located}</strong>
+              <strong>{summary.located.toLocaleString('zh-CN')}</strong>
               <span>已落点</span>
             </button>
             <button
               type="button"
               className={`map-stat-card ${listMode === 'missing' ? 'is-active' : ''}`}
+              aria-pressed={listMode === 'missing'}
               onClick={() => {
                 setListMode('missing')
                 setListFilterText('')
@@ -1200,12 +1199,13 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                 })
               }}
             >
-              <strong>{summary.missing}</strong>
+              <strong>{summary.missing.toLocaleString('zh-CN')}</strong>
               <span>待补坐标</span>
             </button>
             <button
               type="button"
               className={`map-stat-card ${listMode === 'manual' ? 'is-active' : ''}`}
+              aria-pressed={listMode === 'manual'}
               onClick={() => {
                 setListMode('manual')
                 setListFilterText('')
@@ -1216,11 +1216,11 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
                 })
               }}
             >
-              <strong>{summary.manual}</strong>
+              <strong>{summary.manual.toLocaleString('zh-CN')}</strong>
               <span>手动打点</span>
             </button>
             <div className="map-stat-card">
-              <strong>{points.length}</strong>
+              <strong>{points.length.toLocaleString('zh-CN')}</strong>
               <span>地图显示</span>
             </div>
           </div>
@@ -1244,23 +1244,25 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             >
               刷新点位
             </Button>
-            <Button
-              icon={<SyncOutlined />}
-              onClick={() => {
-                trackEvent(readableEventName('点击', '补齐坐标'), {
-                  event_type: 'operation_click',
-                  operation: 'map_batch_geocode',
-                  missing: summary.missing,
-                })
-                handleGeocodeMissing()
-              }}
-              loading={geocoding}
-              disabled={!isAdmin || summary.missing === 0}
-            >
-              补齐坐标
-            </Button>
+            {canEditAddresses && (
+              <Button
+                icon={<SyncOutlined />}
+                onClick={() => {
+                  trackEvent(readableEventName('点击', '补齐坐标'), {
+                    event_type: 'operation_click',
+                    operation: 'map_batch_geocode',
+                    missing: summary.missing,
+                  })
+                  handleGeocodeMissing()
+                }}
+                loading={geocoding}
+                disabled={summary.missing === 0}
+              >
+                补齐坐标
+              </Button>
+            )}
           </Space>
-          {geocodeProgress && geocoding && (
+          {canEditAddresses && geocodeProgress && geocoding && (
             <Text className="map-help-text">
               已补齐 {geocodeProgress.updated} 个，失败 {geocodeProgress.failed} 个，剩余 {geocodeProgress.remaining} 个
             </Text>
@@ -1269,8 +1271,8 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
 
         <div className="map-side-section map-list-section">
           <div className="map-list-head">
-            <span>{listMode === 'missing' ? '待补坐标' : listMode === 'manual' ? '手动打点' : '已落点'}</span>
-            <Checkbox checked={showProtection} onChange={handleShowProtectionChange} disabled={!isAdmin}>
+            <h2>{listMode === 'missing' ? '待补坐标' : listMode === 'manual' ? '手动打点' : '已落点'}</h2>
+            <Checkbox checked={showProtection} onChange={handleShowProtectionChange} disabled={!canEditAddresses}>
               {protectionRadiusKm}公里圈
             </Checkbox>
           </div>
@@ -1281,6 +1283,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             onChange={event => setListFilterText(event.target.value)}
             allowClear
             placeholder="搜索门店名、省市区或地址"
+            aria-label="筛选地图点位"
           />
           {summary.listLimited && (
             <Text className="map-help-text">当前列表最多显示 1000 条，可以搜索缩小范围。</Text>
@@ -1299,74 +1302,79 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
               renderItem={point => (
                 <List.Item
                   className={selectedPoint?.id === point.id ? 'is-active' : ''}
-                  onClick={() => {
-                    selectPoint(point)
-                    trackEvent(readableEventName('点击门店', formatPointName(point)), {
-                      event_type: 'operation_click',
-                      operation: 'map_store_select',
-                      city: point.city,
-                      has_location: hasLocation(point),
-                    })
-                  }}
                 >
-                  <div className="map-point-line">
-                    <EnvironmentOutlined />
-                    <div className="map-point-body">
-                      <div className="map-point-name">{formatPointName(point)}</div>
-                      <div className="map-point-meta">{fullRegion(point)}</div>
-                      {point.address && <div className="map-point-address">{point.address}</div>}
+                  <button
+                    type="button"
+                    className="map-point-line"
+                    aria-pressed={selectedPoint?.id === point.id}
+                    onClick={() => {
+                      selectPoint(point)
+                      trackEvent(readableEventName('点击门店', formatPointName(point)), {
+                        event_type: 'operation_click',
+                        operation: 'map_store_select',
+                        city: point.city,
+                        has_location: hasLocation(point),
+                      })
+                    }}
+                  >
+                    <span className="map-point-icon"><EnvironmentOutlined aria-hidden="true" /></span>
+                    <span className="map-point-body">
+                      <span className="map-point-name">{formatPointName(point)}</span>
+                      <span className="map-point-meta">{fullRegion(point)}</span>
+                      {point.address && <span className="map-point-address">{point.address}</span>}
                       {isManualLocation(point) && (
-                        <Tag color="purple" style={{ marginTop: 6 }}>手动打点</Tag>
+                        <span className="address-meta-chip map-point-tag">手动打点</span>
                       )}
                       {!hasLocation(point) && point.geocode_status && (
-                        <Tag color="orange" style={{ marginTop: 6 }}>{point.geocode_status}</Tag>
+                        <span className="address-meta-chip map-point-tag">{point.geocode_status}</span>
                       )}
-                      <div className="map-row-actions" onClick={event => event.stopPropagation()}>
-                        <Button
-                          size="small"
-                          icon={<SyncOutlined />}
-                          loading={autoGeocodingId === point.id || savingId === point.id}
-                          disabled={!isAdmin || !canAutoLocate(point)}
-                          onClick={() => {
-                            trackEvent(readableEventName('点击', hasLocation(point) ? '重定位' : '自动定位'), {
-                              event_type: 'operation_click',
-                              operation: hasLocation(point) ? 'location_auto_relocate' : 'location_auto_locate',
-                              city: point.city,
-                            })
-                            handleAutoLocateRow(point)
-                          }}
-                        >
-                          {hasLocation(point) ? '重定位' : '自动定位'}
-                        </Button>
-                        <Button
-                          size="small"
-                          icon={<AimOutlined />}
-                          type={selectedPoint?.id === point.id ? 'primary' : 'default'}
-                          disabled={!isAdmin}
-                          onClick={() => {
-                            selectPoint(point)
-                            const keyword = searchTextForRow(point)
-                            setMapSearchText(keyword)
-                            handleMapSearch(keyword)
-                            trackEvent(readableEventName('开始定点', formatPointName(point)), {
-                              event_type: 'location_relocate_start',
-                              city: point.city,
-                              had_location: hasLocation(point),
-                            })
-                            trackEvent(readableEventName('点击', '定点'), {
-                              event_type: 'operation_click',
-                              operation: 'location_relocate_start',
-                              city: point.city,
-                              had_location: hasLocation(point),
-                            })
-                            message.info('请在地图搜索框选择候选点，保存后会写入该门店坐标')
-                          }}
-                        >
-                          定点
-                        </Button>
-                      </div>
+                    </span>
+                  </button>
+                  {canEditAddresses && (
+                    <div className="map-row-actions">
+                      <Button
+                        size="small"
+                        icon={<SyncOutlined />}
+                        loading={autoGeocodingId === point.id || savingId === point.id}
+                        disabled={!canAutoLocate(point)}
+                        onClick={() => {
+                          trackEvent(readableEventName('点击', hasLocation(point) ? '重定位' : '自动定位'), {
+                            event_type: 'operation_click',
+                            operation: hasLocation(point) ? 'location_auto_relocate' : 'location_auto_locate',
+                            city: point.city,
+                          })
+                          handleAutoLocateRow(point)
+                        }}
+                      >
+                        {hasLocation(point) ? '重定位' : '自动定位'}
+                      </Button>
+                      <Button
+                        size="small"
+                        icon={<AimOutlined />}
+                        type={selectedPoint?.id === point.id ? 'primary' : 'default'}
+                        onClick={() => {
+                          selectPoint(point)
+                          const keyword = searchTextForRow(point)
+                          setMapSearchText(keyword)
+                          handleMapSearch(keyword, point)
+                          trackEvent(readableEventName('开始定点', formatPointName(point)), {
+                            event_type: 'location_relocate_start',
+                            city: point.city,
+                            had_location: hasLocation(point),
+                          })
+                          trackEvent(readableEventName('点击', '定点'), {
+                            event_type: 'operation_click',
+                            operation: 'location_relocate_start',
+                            city: point.city,
+                            had_location: hasLocation(point),
+                          })
+                          message.info('请在地图搜索框选择候选点，保存后会写入该门店坐标')
+                        }}
+                      >
+                        定点
+                      </Button>
                     </div>
-                  </div>
+                  )}
                 </List.Item>
               )}
             />
@@ -1377,7 +1385,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
       <div className="map-stage">
         <div ref={mapNodeRef} className="map-canvas" />
         <MapSearchPanel
-          selectedPoint={isAdmin ? selectedPoint : null}
+          isRelocating={Boolean(editingPoint)}
           searchText={mapSearchText}
           loading={mapSearchLoading}
           results={mapSearchResults}
@@ -1386,7 +1394,7 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
           onSelect={useMapSearchPoi}
         />
         {(mapLoading || pointsLoading) && (
-          <div className="map-loading">
+          <div className="map-loading" role="status">
             <Spin />
             <span>{mapLoading ? '地图加载中' : '点位加载中'}</span>
           </div>
@@ -1401,15 +1409,16 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             />
           </div>
         )}
-        <Tooltip title={selectedPoint ? '通过搜索候选点为选中门店定点' : '通过搜索地址查看最近门店距离'}>
+        <Tooltip title={editingPoint ? '通过搜索候选点为选中门店定点' : '通过搜索地址查看最近门店距离'}>
           <div className="map-radius-badge">
             <AimOutlined />
             <span>保护半径</span>
             <Select
+              aria-label="保护半径"
               size="small"
               value={protectionRadiusKm}
               onChange={handleProtectionRadiusChange}
-              disabled={!isAdmin}
+              disabled={!canEditAddresses}
               popupMatchSelectWidth={false}
               options={PROTECTION_RADIUS_OPTIONS.map(value => ({
                 value,
@@ -1418,62 +1427,68 @@ export default function MapView({ searchQuery = '', searchMode = 'city', themeMo
             />
           </div>
         </Tooltip>
-        {isAdmin && selectedPoint && (
+        {selectedPoint && (
           <div className="map-save-bar">
             <div className="map-save-info">
               <div className="map-save-title">
                 {formatPointName(selectedPoint)}
-                {manualPoint && <Tag color="purple">待保存</Tag>}
+                {isManualDraft && <Tag color="purple">待保存</Tag>}
               </div>
               <div className="map-save-meta">{fullRegion(selectedPoint)}</div>
               {selectedPoint.address && <div className="map-save-address">{selectedPoint.address}</div>}
             </div>
             <div className="map-save-actions">
-              <Button
-                size="small"
-                icon={<SearchOutlined />}
-                onClick={() => {
-                  trackEvent(readableEventName('点击', '搜当前地址'), {
-                    event_type: 'operation_click',
-                    operation: 'location_search_selected_address',
-                    city: selectedPoint.city,
-                  })
-                  searchSelectedPointAddress()
-                }}
-              >
-                搜地址
-              </Button>
-              <Button
-                size="small"
-                icon={<SaveOutlined />}
-                type="primary"
-                disabled={!manualPoint}
-                loading={savingId === selectedPoint.id}
-                onClick={() => {
-                  trackEvent(readableEventName('点击', '保存定位'), {
-                    event_type: 'operation_click',
-                    operation: 'location_save',
-                    city: selectedPoint.city,
-                    has_new_point: Boolean(manualPoint),
-                  })
-                  saveLocation(selectedPoint, manualPoint, { status: 'manual_map' })
-                }}
-              >
-                保存
-              </Button>
+              {editingPoint && (
+                <>
+                  <Button
+                    size="small"
+                    icon={<SearchOutlined />}
+                    onClick={() => {
+                      trackEvent(readableEventName('点击', '搜当前地址'), {
+                        event_type: 'operation_click',
+                        operation: 'location_search_selected_address',
+                        city: editingPoint.city,
+                      })
+                      searchSelectedPointAddress()
+                    }}
+                  >
+                    搜地址
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<SaveOutlined />}
+                    type="primary"
+                    disabled={!manualPoint}
+                    loading={savingId === editingPoint.id}
+                    onClick={() => {
+                      trackEvent(readableEventName('点击', '保存定位'), {
+                        event_type: 'operation_click',
+                        operation: 'location_save',
+                        city: editingPoint.city,
+                        has_new_point: Boolean(manualPoint),
+                      })
+                      saveLocation(editingPoint, manualPoint, { status: 'manual_map' })
+                    }}
+                  >
+                    保存
+                  </Button>
+                </>
+              )}
               <Button
                 size="small"
                 icon={<CloseOutlined />}
                 onClick={() => {
-                  trackEvent(readableEventName('点击', '取消定点'), {
-                    event_type: 'operation_click',
-                    operation: 'location_relocate_cancel',
-                    city: selectedPoint.city,
-                  })
+                  if (editingPoint) {
+                    trackEvent(readableEventName('点击', '取消定点'), {
+                      event_type: 'operation_click',
+                      operation: 'location_relocate_cancel',
+                      city: editingPoint.city,
+                    })
+                  }
                   cancelSelectedPoint()
                 }}
               >
-                取消
+                {editingPoint ? '取消' : '关闭'}
               </Button>
             </div>
           </div>

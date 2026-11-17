@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { Spin } from 'antd'
-import { DatabaseOutlined, EnvironmentOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons'
 import { fuzzyMatch } from '@/utils/fuzzy'
 import { readableEventName, trackEvent } from '@/utils/analytics'
 import CityDetail from './CityDetail'
@@ -14,26 +14,16 @@ function provinceIndexLabel(name) {
   return String(name || '').trim().slice(0, 1) || '#'
 }
 
-function CityCard({ city, count, onClick }) {
+function CityCard({ city, count, tone, onClick }) {
   return (
-    <div
-      className="city-card"
-      role="button" tabIndex={0}
-      onClick={onClick}
-      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onClick()}
-    >
-      <div className="city-card-initial">
-        {cityInitial(city)}
-      </div>
-      <div className="city-card-body">
-        <div className="city-card-title">{city}</div>
-        <div className="city-card-meta">
-          <EnvironmentOutlined />
-          <span className="city-card-count">{count}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>条地址</span>
-        </div>
-      </div>
-    </div>
+    <button type="button" className={`city-card city-card--${tone}`} onClick={onClick} title={city}>
+      <span className="city-card-initial" aria-hidden="true">{cityInitial(city)}</span>
+      <span className="city-card-body">
+        <span className="city-card-title">{city}</span>
+        <span className="city-card-meta">{count.toLocaleString('zh-CN')} 条地址</span>
+      </span>
+      <RightOutlined className="city-card-arrow" aria-hidden="true" />
+    </button>
   )
 }
 
@@ -53,7 +43,7 @@ export default function CityGrid({ stats, loading, searchQuery }) {
     for (const row of stats) {
       const prov = row.province || '其他'
       if (!map[prov]) map[prov] = []
-      map[prov].push({ city: row.city, count: parseInt(row.count) })
+      map[prov].push({ city: row.city, count: Number(row.count) || 0 })
     }
     return map
   }, [stats])
@@ -64,10 +54,10 @@ export default function CityGrid({ stats, loading, searchQuery }) {
   )
 
   const visibleProvinces = useMemo(() =>
-    provinces.filter(prov => {
-      const cities = (provinceMap[prov] || []).filter(c => !searchQuery || fuzzyMatch(c.city, searchQuery))
-      return cities.length > 0
-    }),
+    provinces.map(name => ({
+      name,
+      cities: provinceMap[name].filter(({ city }) => !searchQuery || fuzzyMatch(city, searchQuery)),
+    })).filter(({ cities }) => cities.length > 0),
     [provinceMap, provinces, searchQuery]
   )
 
@@ -80,9 +70,7 @@ export default function CityGrid({ stats, loading, searchQuery }) {
     indexBubbleTimer.current = window.setTimeout(() => setShowIndexBubble(false), 520)
   }
 
-  const scrollToProvince = (province, behavior = 'smooth', autoHide = true) => {
-    const index = visibleProvinces.indexOf(province)
-    if (index >= 0) indexRef.current?.style.setProperty('--active-index', index)
+  const scrollToProvince = (province, behavior, autoHide = true) => {
     activeProvinceRef.current = province
     setActiveProvince(province)
     setShowIndexBubble(true)
@@ -90,76 +78,93 @@ export default function CityGrid({ stats, loading, searchQuery }) {
     provinceRefs.current[province]?.scrollIntoView({ behavior, block: 'start' })
   }
 
-  const scrollByPointer = (event, behavior = 'auto') => {
+  const scrollByPointer = (event, force = false) => {
     const rect = indexRef.current?.getBoundingClientRect()
     if (!rect || visibleProvinces.length === 0) return
 
     const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 0.999)
     const index = Math.floor(ratio * visibleProvinces.length)
-    const province = visibleProvinces[index]
-    if (province && province !== activeProvinceRef.current) scrollToProvince(province, behavior, false)
+    const province = visibleProvinces[index]?.name
+    if (province && (force || province !== activeProvinceRef.current)) {
+      scrollToProvince(province, 'auto', false)
+    }
   }
 
   const handleIndexPointerDown = (event) => {
+    if (event.pointerType === 'mouse') return
     event.preventDefault()
+    event.stopPropagation()
     isIndexDragging.current = true
     window.clearTimeout(indexBubbleTimer.current)
-    if (activeProvinceRef.current) setShowIndexBubble(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    scrollByPointer(event, 'auto')
+    scrollByPointer(event, true)
   }
 
   const handleIndexPointerMove = (event) => {
     if (!isIndexDragging.current) return
     event.preventDefault()
-    scrollByPointer(event, 'auto')
+    scrollByPointer(event)
   }
 
   const handleIndexPointerUp = (event) => {
+    if (!isIndexDragging.current) return
     isIndexDragging.current = false
-    event.currentTarget.releasePointerCapture?.(event.pointerId)
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
     hideIndexBubbleSoon()
   }
 
   if (loading) {
-    return <div className="state-panel"><Spin size="large" /></div>
+    return <div className="state-panel" role="status" aria-label="正在加载城市"><Spin size="large" /></div>
   }
 
   if (stats.length === 0) {
     return (
       <div className="state-panel state-panel-empty">
         <div className="state-panel-icon"><DatabaseOutlined /></div>
-        <div className="state-panel-title">还没有数据</div>
-        <div className="state-panel-desc">
-          点击右上角「导入」上传 Excel 文件，<br />再点「AI 解析」自动整理城市地址
-        </div>
+        <h2 className="state-panel-title">暂无地址数据</h2>
+        <p className="state-panel-desc">管理员可在控制台导入地址。</p>
       </div>
     )
   }
 
+  if (visibleProvinces.length === 0) {
+    return (
+      <div className="state-panel state-panel-empty">
+        <div className="state-panel-icon"><SearchOutlined /></div>
+        <h2 className="state-panel-title">没有找到相关城市</h2>
+      </div>
+    )
+  }
+
+  const hasProvinceIndex = visibleProvinces.length > 1
+
   return (
     <>
-      <div className="city-grid-wrap">
-        {visibleProvinces.length > 1 && (
+      <div className={`city-grid-wrap${hasProvinceIndex ? ' city-grid-wrap--indexed' : ''}`}>
+        {hasProvinceIndex && (
           <nav
             ref={indexRef}
             className="province-index"
-            style={{ '--index-count': visibleProvinces.length }}
             aria-label="省份索引"
+            onTouchStart={event => event.stopPropagation()}
             onPointerDown={handleIndexPointerDown}
             onPointerMove={handleIndexPointerMove}
             onPointerUp={handleIndexPointerUp}
             onPointerCancel={handleIndexPointerUp}
           >
-            <span className="province-index-thumb" aria-hidden="true" />
-            {visibleProvinces.map(prov => (
-              <span
+            {visibleProvinces.map(({ name: prov }) => (
+              <button
                 key={prov}
-                className="province-index-item"
+                type="button"
+                className={`province-index-item${prov === activeProvince ? ' is-active' : ''}`}
                 title={prov}
+                aria-label={prov}
+                onClick={() => scrollToProvince(prov, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth')}
               >
                 {provinceIndexLabel(prov)}
-              </span>
+              </button>
             ))}
           </nav>
         )}
@@ -169,44 +174,37 @@ export default function CityGrid({ stats, loading, searchQuery }) {
           </div>
         )}
 
-        {visibleProvinces.map(prov => {
-          const cities = (provinceMap[prov] || []).filter(c => !searchQuery || fuzzyMatch(c.city, searchQuery))
-          const totalInProv = cities.reduce((s, c) => s + c.count, 0)
-
-          return (
-            <div
-              key={prov}
-              ref={node => { provinceRefs.current[prov] = node }}
-              className="province-section"
-              style={{ marginBottom: 28 }}
-            >
+        <div className="province-sections">
+          {visibleProvinces.map(({ name: prov, cities }, index) => (
+            <section key={prov} ref={node => { provinceRefs.current[prov] = node }} className="province-section">
               <div className="province-heading">
-                <span className="province-name">{prov}</span>
-                <span style={{ fontSize: 11, color: 'var(--color-primary-light)', fontWeight: 600 }}>· {cities.length} 城市 · {totalInProv} 条</span>
-                <div className="province-rule" />
+                <h2 className="province-name">{prov}</h2>
+                <span className="province-count">
+                  {cities.length} 个城市 · {cities.reduce((total, { count }) => total + count, 0).toLocaleString('zh-CN')} 条地址
+                </span>
               </div>
               <div className="city-card-grid">
-                {cities.map(({ city, count }, i) => (
-                  <div key={city} className="city-card-anim" style={{ '--delay': `${i * 28}ms` }}>
-                    <CityCard
-                      city={city}
-                      count={count}
-                      onClick={() => {
-                        setSelected({ city, province: prov })
-                        trackEvent(readableEventName('打开城市', city), {
-                          event_type: 'city_detail_open',
-                          city,
-                          province: prov,
-                          address_count: count,
-                        })
-                      }}
-                    />
-                  </div>
+                {cities.map(({ city, count }) => (
+                  <CityCard
+                    key={city}
+                    city={city}
+                    count={count}
+                    tone={['blue', 'teal', 'violet'][index % 3]}
+                    onClick={() => {
+                      setSelected({ city, province: prov })
+                      trackEvent(readableEventName('打开城市', city), {
+                        event_type: 'city_detail_open',
+                        city,
+                        province: prov,
+                        address_count: count,
+                      })
+                    }}
+                  />
                 ))}
               </div>
-            </div>
-          )
-        })}
+            </section>
+          ))}
+        </div>
       </div>
 
       <CityDetail

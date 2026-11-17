@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query, initDB } from '@/lib/db'
-import { getAdminUser, getAppUser } from '@/lib/auth'
+import { getAdminAccessError, getAppUser } from '@/lib/auth'
 
 const MAP_LIMIT = 20000
 const LIST_LIMIT = 1000
@@ -181,10 +181,9 @@ export async function GET(request) {
 
 // POST /api/addresses
 export async function POST(request) {
-  if (!await getAdminUser()) return NextResponse.json({ ok: false, error: '需要管理员权限' }, { status: 403 })
-  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
-    await initDB()
+    const accessError = await getAdminAccessError()
+    if (accessError) return accessError
 
     const body = await request.json()
     const { rows, mode = 'append' } = body
@@ -241,10 +240,9 @@ export async function POST(request) {
 
 // DELETE /api/addresses
 export async function DELETE() {
-  if (!await getAdminUser()) return NextResponse.json({ ok: false, error: '需要管理员权限' }, { status: 403 })
-  if (!await getAppUser()) return NextResponse.json({ ok: false, error: '请先登录' }, { status: 401 })
   try {
-    await initDB()
+    const accessError = await getAdminAccessError()
+    if (accessError) return accessError
     await query('TRUNCATE TABLE city_addresses RESTART IDENTITY')
     return NextResponse.json({ ok: true })
   } catch (e) {
