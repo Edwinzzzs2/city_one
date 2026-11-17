@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Drawer, Input, Spin, Button } from 'antd'
 import { SearchOutlined, EnvironmentOutlined, CloseOutlined } from '@ant-design/icons'
 import { fuzzyFilter, renderHighlight } from '@/utils/fuzzy'
-import { useBodyScrollLock } from '@/utils/useBodyScrollLock'
 import { readableEventName, trackEvent } from '@/utils/analytics'
 import CopyableAddress from './CopyableAddress'
 
@@ -12,7 +11,6 @@ export default function CityDetail({ city, province, open, onClose }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const touchStartRef = useRef(null)
-  useBodyScrollLock(open)
 
   const handleClose = () => {
     setQ('')

@@ -78,7 +78,7 @@ body {
 }
 
 body.is-scroll-locked,
-body.is-scroll-locked .app-shell {
+body:is(.is-scroll-locked, :has(.city-detail-drawer.ant-drawer-open)) .app-shell {
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -110,6 +110,10 @@ textarea {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
+}
+
+.app-shell--list {
+  scrollbar-gutter: stable;
 }
 
 .app-header {

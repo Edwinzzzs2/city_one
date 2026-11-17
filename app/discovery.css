@@ -378,7 +378,6 @@
 
 .city-detail-drawer.ant-drawer .ant-drawer-mask {
   background: rgb(6 19 37 / 26%);
-  backdrop-filter: blur(3px);
 }
 
 .city-detail-drawer.ant-drawer .ant-drawer-content {
