@@ -1209,15 +1209,18 @@ button.map-stat-card:hover {
     padding-inline: 16px;
   }
 
-  .city-detail-search .ant-input,
-  .map-search-panel .ant-input {
-    font-size: 16px;
-  }
-
   .map-save-bar {
     align-items: flex-start;
     flex-direction: column;
     gap: 7px;
+  }
+}
+
+@media (max-width: 720px), (any-pointer: coarse) {
+  .city-detail-search input.ant-input,
+  .map-search-panel input.ant-input,
+  .map-list-filter input.ant-input {
+    font-size: max(16px, 1rem);
   }
 }
 

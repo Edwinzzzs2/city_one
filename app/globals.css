@@ -552,7 +552,6 @@ textarea {
   .header-search input,
   .header-search-mode select {
     min-height: 40px;
-    font-size: 16px;
   }
 
   .app-shell--map .app-header-inner {
@@ -621,6 +620,13 @@ textarea {
   }
 }
 
+@media (max-width: 720px), (any-pointer: coarse) {
+  .header-search input,
+  .header-search-mode select {
+    font-size: max(16px, 1rem);
+  }
+}
+
 @media (max-width: 440px) {
   .header-actions .view-switch .ant-segmented-item-icon {
     display: none;
@@ -666,6 +672,12 @@ textarea {
 @media (max-width: 340px) {
   .brand-block > span {
     display: none;
+  }
+}
+
+@media (display-mode: standalone) {
+  html {
+    touch-action: pan-x pan-y;
   }
 }
 

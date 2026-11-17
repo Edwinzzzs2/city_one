@@ -201,7 +201,7 @@ function MainApp({ themeMode, onToggleTheme, user, onLogout }) {
                 aria-label="清除搜索"
                 onClick={() => {
                   setSearchQ('')
-                  searchInputRef.current?.focus()
+                  searchInputRef.current?.focus({ preventScroll: true })
                 }}
               >
                 <CloseCircleFilled />

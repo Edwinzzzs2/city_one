@@ -2,6 +2,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry'
 import AppTheme from '@/components/AppTheme'
 import UmamiAnalytics from '@/components/UmamiAnalytics'
 import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
+import StandaloneViewport from '@/components/StandaloneViewport'
 import './globals.css'
 import './discovery.css'
 import './dialogs.css'
@@ -34,6 +35,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="zh-CN">
       <body>
+        <StandaloneViewport />
         <ServiceWorkerRegistration />
         <UmamiAnalytics />
         <AntdRegistry>
